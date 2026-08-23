@@ -86,7 +86,7 @@ export function titleSizeClass(label: string): string {
   return "text-[36px] lg:text-[24px] xl:text-[30px] 2xl:text-[36px]";
 }
 
-function SortableHubCard({
+export function SortableHubCard({
   item,
   suppressClickRef,
 }: {

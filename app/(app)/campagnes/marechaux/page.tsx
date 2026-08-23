@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   CalendarCheck,
   Cross,
   FileText,
@@ -24,11 +27,13 @@ import {
   addMarechal,
   listActivityStatusesForMarechal,
   listAssignedActivityCountByMarechal,
+  listAssignedActivityIdsByMarechal,
   listMarechaux,
   marechalDisplayName,
   removeMarechal,
   setMarechalActivityStatus,
   setMarechalFormation,
+  setMarechalGratuiteActivity,
   toTitleCase,
   updateMarechal,
   type Marechal,
@@ -91,6 +96,11 @@ const inputClassName =
   "w-64 rounded-full border border-black/[.08] bg-white py-2 pl-9 pr-3 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800";
 const rowClassName =
   "border-b border-black/[.06] odd:bg-black/[.015] dark:border-white/[.06] dark:odd:bg-white/[.03]";
+
+// Un maréchal bénévole sur 2 campagnes ou plus au cours de cette année a
+// droit à une gratuité (utilisable à la discrétion de l'admin).
+const GRATUITE_YEAR = 2026;
+const GRATUITE_THRESHOLD = 2;
 
 function SearchInput({
   value,
@@ -286,6 +296,72 @@ function formatActivityDate(dateStr: string): string {
   });
 }
 
+type SortField = "name" | "date";
+
+function SortHeader({
+  label,
+  field,
+  sortField,
+  sortDir,
+  onSort,
+}: {
+  label: string;
+  field: SortField;
+  sortField: SortField;
+  sortDir: "asc" | "desc";
+  onSort: (field: SortField) => void;
+}) {
+  const active = sortField === field;
+  return (
+    <th className="py-2 pr-4 font-medium">
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        className="flex items-center gap-1 whitespace-nowrap hover:text-foreground"
+      >
+        {label}
+        {active ? (
+          sortDir === "asc" ? (
+            <ArrowUp size={12} />
+          ) : (
+            <ArrowDown size={12} />
+          )
+        ) : (
+          <ArrowUpDown size={12} className="text-foreground/30" />
+        )}
+      </button>
+    </th>
+  );
+}
+
+function useNameDateSort<T extends { created_at: string }>(
+  items: T[],
+  displayName: (item: T) => string,
+) {
+  const [sortField, setSortField] = useState<SortField>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: SortField) => {
+    if (field === sortField) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
+
+  const sortItems = (list: T[]): T[] =>
+    [...list].sort((a, b) => {
+      const cmp =
+        sortField === "name"
+          ? displayName(a).localeCompare(displayName(b), "fr")
+          : a.created_at.localeCompare(b.created_at);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+
+  return { sortField, sortDir, handleSort, sortItems };
+}
+
 function MarechalAvailabilityModal({
   marechal,
   activities,
@@ -416,6 +492,9 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
   const [campaignCounts, setCampaignCounts] = useState<Record<string, number>>(
     {},
   );
+  const [assignedActivityIds, setAssignedActivityIds] = useState<
+    Record<string, string[]>
+  >({});
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -430,13 +509,15 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
     setIsLoading(true);
     setError(null);
     try {
-      const [list, counts, activityList] = await Promise.all([
+      const [list, counts, assignedIds, activityList] = await Promise.all([
         listMarechaux(),
         listAssignedActivityCountByMarechal(),
+        listAssignedActivityIdsByMarechal(),
         listActivities(),
       ]);
       setMarechaux(list);
       setCampaignCounts(counts);
+      setAssignedActivityIds(assignedIds);
       setActivities(activityList);
     } catch {
       setError("Impossible de charger les maréchaux.");
@@ -493,17 +574,56 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
     }
   };
 
+  const handleGratuiteChange = async (
+    marechal: Marechal,
+    activityId: string | null,
+  ) => {
+    if (!canWrite) return;
+    setMarechaux((prev) =>
+      prev.map((m) =>
+        m.id === marechal.id
+          ? { ...m, gratuite_2026_activity_id: activityId }
+          : m,
+      ),
+    );
+    try {
+      await setMarechalGratuiteActivity(marechal.id, activityId);
+    } catch {
+      alert("Échec de la mise à jour.");
+      setMarechaux((prev) =>
+        prev.map((m) =>
+          m.id === marechal.id
+            ? { ...m, gratuite_2026_activity_id: marechal.gratuite_2026_activity_id }
+            : m,
+        ),
+      );
+    }
+  };
+
+  const activitiesThisYear = new Set(
+    activities
+      .filter((a) => a.date.startsWith(String(GRATUITE_YEAR)))
+      .map((a) => a.id),
+  );
+  const gratuiteEligible = (marechal: Marechal) =>
+    !marechal.is_campaign_team &&
+    (assignedActivityIds[marechal.id] ?? []).filter((id) =>
+      activitiesThisYear.has(id),
+    ).length >= GRATUITE_THRESHOLD;
+
+  const { sortField, sortDir, handleSort, sortItems } = useNameDateSort(
+    marechaux,
+    marechalDisplayName,
+  );
   const filterQuery = query.toLowerCase();
-  const visible = marechaux
-    .filter(
+  const visible = sortItems(
+    marechaux.filter(
       (m) =>
         marechalDisplayName(m).toLowerCase().includes(filterQuery) ||
         m.name.toLowerCase().includes(filterQuery) ||
         (m.guild_name ?? "").toLowerCase().includes(filterQuery),
-    )
-    .sort((a, b) =>
-      marechalDisplayName(a).localeCompare(marechalDisplayName(b), "fr"),
-    );
+    ),
+  );
   const { page, pageCount, setPage, pageItems } = usePagination(visible);
 
   return (
@@ -535,14 +655,32 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
             </span>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px] text-left text-sm">
+            <table className="w-full min-w-[900px] text-left text-sm">
               <thead>
                 <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                  <th className="py-2 pr-4 font-medium">Nom</th>
-                  <th className="py-2 pr-4 font-medium">Formation 2025</th>
-                  <th className="py-2 pr-4 font-medium">Formation 2026</th>
-                  <th className="py-2 pr-4 font-medium">Campagnes</th>
-                  <th className="py-2 pr-4 font-medium">Actions</th>
+                  <SortHeader
+                    label="Nom"
+                    field="name"
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <th className="py-2 pr-4 text-center font-medium">
+                    Formation 2025
+                  </th>
+                  <th className="py-2 pr-4 text-center font-medium">
+                    Formation 2026
+                  </th>
+                  <th className="py-2 pr-4 text-center font-medium">
+                    Campagnes
+                  </th>
+                  <th className="py-2 pr-4 text-center font-medium">
+                    Gratuité {GRATUITE_YEAR}
+                  </th>
+                  <th className="py-2 pr-4 text-center font-medium">
+                    Gratuité prise
+                  </th>
+                  <th className="py-2 pr-4 text-right font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -560,7 +698,7 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                         {marechalDisplayName(m)}
                       </span>
                     </td>
-                    <td className="py-2 pr-4 text-foreground/80">
+                    <td className="py-2 pr-4 text-center text-foreground/80">
                       <BooleanDot
                         value={m.formation_2025}
                         onToggle={
@@ -570,7 +708,7 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                         }
                       />
                     </td>
-                    <td className="py-2 pr-4 text-foreground/80">
+                    <td className="py-2 pr-4 text-center text-foreground/80">
                       <BooleanDot
                         value={m.formation_2026}
                         onToggle={
@@ -580,8 +718,35 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                         }
                       />
                     </td>
-                    <td className="py-2 pr-4 text-foreground/80">
+                    <td className="py-2 pr-4 text-center text-foreground/80">
                       {campaignCounts[m.id] ?? 0}
+                    </td>
+                    <td className="py-2 pr-4 text-center text-foreground/80">
+                      <BooleanDot value={gratuiteEligible(m)} />
+                    </td>
+                    <td className="py-2 pr-4 text-center text-foreground/80">
+                      <select
+                        value={m.gratuite_2026_activity_id ?? ""}
+                        onChange={(e) =>
+                          handleGratuiteChange(m, e.target.value || null)
+                        }
+                        disabled={!canWrite || !gratuiteEligible(m)}
+                        title={
+                          gratuiteEligible(m)
+                            ? undefined
+                            : m.is_campaign_team
+                              ? "Non valable pour l'équipe campagne"
+                              : "Pas encore droit à la gratuité"
+                        }
+                        className="rounded border border-black/[.08] bg-white px-2 py-1 text-xs text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
+                      >
+                        <option value="">— Non prise —</option>
+                        {activities.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name}
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="py-2 pr-4">
                       {canWrite && (
@@ -703,16 +868,18 @@ function MedicsTab({ canWrite }: { canWrite: boolean }) {
     }
   };
 
+  const { sortField, sortDir, handleSort, sortItems } = useNameDateSort(
+    medics,
+    marechalDisplayName,
+  );
   const filterQuery = query.toLowerCase();
-  const visible = medics
-    .filter(
+  const visible = sortItems(
+    medics.filter(
       (m) =>
         marechalDisplayName(m).toLowerCase().includes(filterQuery) ||
         m.name.toLowerCase().includes(filterQuery),
-    )
-    .sort((a, b) =>
-      marechalDisplayName(a).localeCompare(marechalDisplayName(b), "fr"),
-    );
+    ),
+  );
   const { page, pageCount, setPage, pageItems } = usePagination(visible);
 
   return (
@@ -748,9 +915,15 @@ function MedicsTab({ canWrite }: { canWrite: boolean }) {
               <table className="w-full min-w-[400px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                    <th className="py-2 pr-4 font-medium">Nom</th>
+                    <SortHeader
+                      label="Nom"
+                      field="name"
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
                     <th className="py-2 pr-4 font-medium">Responsable</th>
-                    <th className="py-2 pr-4 font-medium">Actions</th>
+                    <th className="py-2 pr-4 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -864,16 +1037,18 @@ function WeaponMastersTab({ canWrite }: { canWrite: boolean }) {
     }
   };
 
+  const { sortField, sortDir, handleSort, sortItems } = useNameDateSort(
+    weaponMasters,
+    marechalDisplayName,
+  );
   const filterQuery = query.toLowerCase();
-  const visible = weaponMasters
-    .filter(
+  const visible = sortItems(
+    weaponMasters.filter(
       (w) =>
         marechalDisplayName(w).toLowerCase().includes(filterQuery) ||
         w.name.toLowerCase().includes(filterQuery),
-    )
-    .sort((a, b) =>
-      marechalDisplayName(a).localeCompare(marechalDisplayName(b), "fr"),
-    );
+    ),
+  );
   const { page, pageCount, setPage, pageItems } = usePagination(visible);
 
   return (
@@ -909,8 +1084,14 @@ function WeaponMastersTab({ canWrite }: { canWrite: boolean }) {
               <table className="w-full min-w-[400px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                    <th className="py-2 pr-4 font-medium">Nom</th>
-                    <th className="py-2 pr-4 font-medium">Actions</th>
+                    <SortHeader
+                      label="Nom"
+                      field="name"
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                    />
+                    <th className="py-2 pr-4 text-right font-medium">Actions</th>
                   </tr>
                 </thead>
                 <tbody>

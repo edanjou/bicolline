@@ -19,9 +19,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   Check,
+  Columns3,
   Copy,
   Feather,
   GripVertical,
+  LayoutGrid,
+  List,
   Plus,
   Sparkles,
   Trash2,
@@ -61,6 +64,14 @@ function typeSelectClassName(taskType: string | null): string {
       : CHECKLIST_TYPE_UNSET_STYLE;
   return `flex-shrink-0 rounded border border-black/[.08] px-2 py-1 text-xs font-medium dark:border-white/[.145] ${style}`;
 }
+
+type ViewMode = "list" | "grid" | "kanban";
+
+const VIEW_TABS: { key: ViewMode; label: string; icon: typeof List }[] = [
+  { key: "list", label: "Liste", icon: List },
+  { key: "grid", label: "Grille", icon: LayoutGrid },
+  { key: "kanban", label: "Kanban", icon: Columns3 },
+];
 
 function SortableChecklistItem({
   item,
@@ -265,6 +276,167 @@ function SortableChecklistItem({
   );
 }
 
+function ChecklistCard({
+  item,
+  canWrite,
+  showMeta,
+  showPrompt,
+  isEditing,
+  editingLabel,
+  onEditingLabelChange,
+  onToggle,
+  onAssigneeChange,
+  onTypeChange,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDelete,
+  onOpenPrompt,
+}: {
+  item: ChecklistItem;
+  canWrite: boolean;
+  showMeta: boolean;
+  showPrompt: boolean;
+  isEditing: boolean;
+  editingLabel: string;
+  onEditingLabelChange: (value: string) => void;
+  onToggle: (item: ChecklistItem) => void;
+  onAssigneeChange: (item: ChecklistItem, value: string | null) => void;
+  onTypeChange: (item: ChecklistItem, value: string | null) => void;
+  onStartEdit: (item: ChecklistItem) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: (item: ChecklistItem) => void;
+  onDelete: (item: ChecklistItem) => void;
+  onOpenPrompt: (item: ChecklistItem) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-black/[.06] p-3 dark:border-white/[.06]">
+      <div className="flex items-start gap-2">
+        <input
+          type="checkbox"
+          checked={item.done}
+          onChange={() => onToggle(item)}
+          disabled={isEditing || !canWrite}
+          className="mt-0.5 h-4 w-4 flex-shrink-0 accent-primary disabled:cursor-not-allowed"
+        />
+        {isEditing ? (
+          <input
+            type="text"
+            autoFocus
+            value={editingLabel}
+            onChange={(e) => onEditingLabelChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onSaveEdit(item);
+              } else if (e.key === "Escape") {
+                onCancelEdit();
+              }
+            }}
+            className="flex-1 rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+          />
+        ) : (
+          <span
+            className={`flex-1 text-sm ${
+              item.done ? "text-foreground/40 line-through" : "text-foreground"
+            }`}
+          >
+            {item.label}
+          </span>
+        )}
+      </div>
+
+      {showMeta && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <select
+            value={item.task_type ?? ""}
+            onChange={(e) => onTypeChange(item, e.target.value || null)}
+            disabled={!canWrite}
+            className={`${typeSelectClassName(item.task_type)} disabled:opacity-60`}
+          >
+            <option value="">Type…</option>
+            {CHECKLIST_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <select
+            value={item.assigned_to ?? ""}
+            onChange={(e) => onAssigneeChange(item, e.target.value || null)}
+            disabled={!canWrite}
+            className={`${assigneeSelectClassName(item.assigned_to)} disabled:opacity-60`}
+          >
+            <option value="">—</option>
+            {CHECKLIST_ASSIGNEES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="flex items-center justify-end gap-1">
+        {showPrompt && (
+          <button
+            type="button"
+            onClick={() => onOpenPrompt(item)}
+            aria-label={item.prompt ? "Voir le prompt" : "Ajouter un prompt"}
+            title={item.prompt ? "Voir le prompt" : "Ajouter un prompt"}
+            className={`flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08] ${
+              item.prompt ? "text-primary" : "text-foreground/40"
+            }`}
+          >
+            <Sparkles size={14} />
+          </button>
+        )}
+        {isEditing ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onSaveEdit(item)}
+              aria-label="Enregistrer"
+              className="rounded-full p-1.5 text-foreground/50 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+            >
+              <Check size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              aria-label="Annuler"
+              className="rounded-full p-1.5 text-foreground/50 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+            >
+              <X size={14} />
+            </button>
+          </>
+        ) : (
+          canWrite && (
+            <>
+              <button
+                type="button"
+                onClick={() => onStartEdit(item)}
+                aria-label="Modifier"
+                className="rounded-full p-1.5 text-foreground/50 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+              >
+                <Feather size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onDelete(item)}
+                aria-label="Supprimer"
+                className="rounded-full p-1.5 text-foreground/50 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PromptModal({
   item,
   canWrite,
@@ -373,6 +545,7 @@ export default function ChecklistTab({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingLabel, setEditingLabel] = useState("");
   const [promptItem, setPromptItem] = useState<ChecklistItem | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const fetchAll = async () => {
     setIsLoading(true);
@@ -606,6 +779,26 @@ export default function ChecklistTab({
       )}
 
       {!isLoading && !error && items.length > 0 && (
+        <div className="flex gap-1 self-start rounded-full border border-black/[.08] p-1 dark:border-white/[.145]">
+          {VIEW_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setViewMode(t.key)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                viewMode === t.key
+                  ? "bg-primary text-white"
+                  : "text-foreground/60 hover:bg-black/[.04] dark:hover:bg-white/[.08]"
+              }`}
+            >
+              <t.icon size={14} />
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !error && items.length > 0 && viewMode === "list" && (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -639,6 +832,88 @@ export default function ChecklistTab({
             </div>
           </SortableContext>
         </DndContext>
+      )}
+
+      {!isLoading && !error && items.length > 0 && viewMode === "grid" && (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {visibleItems.map((item) => (
+            <ChecklistCard
+              key={item.id}
+              item={item}
+              canWrite={canWrite}
+              showMeta={showMeta}
+              showPrompt={showPrompt}
+              isEditing={editingId === item.id}
+              editingLabel={editingLabel}
+              onEditingLabelChange={setEditingLabel}
+              onToggle={handleToggle}
+              onAssigneeChange={handleAssigneeChange}
+              onTypeChange={handleTypeChange}
+              onStartEdit={handleStartEdit}
+              onCancelEdit={handleCancelEdit}
+              onSaveEdit={handleSaveEdit}
+              onDelete={handleDelete}
+              onOpenPrompt={setPromptItem}
+            />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && !error && items.length > 0 && viewMode === "kanban" && (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {[
+            ...CHECKLIST_TYPES.map((type) => ({
+              key: type as string,
+              label: type as string,
+              items: items.filter((i) => !i.done && i.task_type === type),
+            })),
+            {
+              key: "none",
+              label: "Sans type",
+              items: items.filter((i) => !i.done && !i.task_type),
+            },
+            {
+              key: "done",
+              label: "Terminé",
+              items: items.filter((i) => i.done),
+            },
+          ].map((column) => (
+            <div
+              key={column.key}
+              className="flex w-64 flex-shrink-0 flex-col gap-2 rounded-xl bg-black/[.02] p-2 dark:bg-white/[.03]"
+            >
+              <p className="flex items-center justify-between px-1 text-xs font-semibold uppercase tracking-wide text-foreground/50">
+                {column.label}
+                <span className="font-normal">{column.items.length}</span>
+              </p>
+              <div className="flex flex-col gap-2">
+                {column.items.map((item) => (
+                  <ChecklistCard
+                    key={item.id}
+                    item={item}
+                    canWrite={canWrite}
+                    showMeta={showMeta}
+                    showPrompt={showPrompt}
+                    isEditing={editingId === item.id}
+                    editingLabel={editingLabel}
+                    onEditingLabelChange={setEditingLabel}
+                    onToggle={handleToggle}
+                    onAssigneeChange={handleAssigneeChange}
+                    onTypeChange={handleTypeChange}
+                    onStartEdit={handleStartEdit}
+                    onCancelEdit={handleCancelEdit}
+                    onSaveEdit={handleSaveEdit}
+                    onDelete={handleDelete}
+                    onOpenPrompt={setPromptItem}
+                  />
+                ))}
+                {column.items.length === 0 && (
+                  <p className="px-1 text-xs text-foreground/40">—</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       {canWrite && doneCount > 0 && (

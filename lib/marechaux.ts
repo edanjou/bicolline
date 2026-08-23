@@ -12,6 +12,7 @@ export type Marechal = {
   player_name: string | null;
   player_email: string | null;
   guild_name: string | null;
+  gratuite_2026_activity_id: string | null;
 };
 
 type RawCharacterJoin = {
@@ -29,6 +30,7 @@ type RawMarechal = {
   is_campaign_team: boolean;
   notes: string | null;
   created_at: string;
+  gratuite_2026_activity_id: string | null;
   characters: RawCharacterJoin | RawCharacterJoin[];
 };
 
@@ -53,11 +55,12 @@ function normalizeMarechal(row: RawMarechal): Marechal {
     player_name: character?.player_name ?? null,
     player_email: character?.player_email ?? null,
     guild_name: guild?.name ?? null,
+    gratuite_2026_activity_id: row.gratuite_2026_activity_id,
   };
 }
 
 const MARECHAL_SELECT =
-  "id, character_id, formation_2025, formation_2026, is_campaign_team, notes, created_at, characters(name, player_name, player_email, guilds(name))";
+  "id, character_id, formation_2025, formation_2026, is_campaign_team, notes, created_at, gratuite_2026_activity_id, characters(name, player_name, player_email, guilds(name))";
 
 export function toTitleCase(value: string): string {
   return value
@@ -283,6 +286,32 @@ export async function listAssignedActivityCountByMarechal(): Promise<
     counts[row.marechal_id] = (counts[row.marechal_id] ?? 0) + 1;
   });
   return counts;
+}
+
+export async function listAssignedActivityIdsByMarechal(): Promise<
+  Record<string, string[]>
+> {
+  const { data, error } = await supabase
+    .from("marechal_activity_status")
+    .select("marechal_id, activity_id")
+    .eq("is_assigned", true);
+  if (error) throw error;
+  const map: Record<string, string[]> = {};
+  (data ?? []).forEach((row) => {
+    (map[row.marechal_id] ??= []).push(row.activity_id);
+  });
+  return map;
+}
+
+export async function setMarechalGratuiteActivity(
+  id: string,
+  activityId: string | null,
+): Promise<void> {
+  const { error } = await supabase
+    .from("marechaux")
+    .update({ gratuite_2026_activity_id: activityId })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function listAssignedMarechalIdsByActivity(): Promise<

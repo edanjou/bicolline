@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Trash2, X } from "lucide-react";
+import { Copy, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getModuleAccessLevels } from "@/lib/features";
 import { getOwnProfile } from "@/lib/profile";
@@ -164,6 +164,8 @@ export default function WarMachinesPanel({
   const [isLoading, setIsLoading] = useState(true);
   const [canWrite, setCanWrite] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [publicUrl, setPublicUrl] = useState("");
 
   const fetchAll = async () => {
     setIsLoading(true);
@@ -178,9 +180,20 @@ export default function WarMachinesPanel({
         setCanWrite(levels[moduleKey] === "ecriture");
       });
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchAll sets a loading flag ahead of an async fetch
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- static value derived from window, only known client-side
+    setPublicUrl(`${window.location.origin}/machines-de-guerre`);
     fetchAll();
   }, [moduleKey]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      alert("Échec de la copie.");
+    }
+  };
 
   const handleCreate = async (input: WarMachineInput) => {
     try {
@@ -229,16 +242,26 @@ export default function WarMachinesPanel({
         <p className="text-sm text-foreground/60">
           {machines.length} machine{machines.length > 1 ? "s" : ""}
         </p>
-        {canWrite && (
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390]"
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
           >
-            <Plus size={16} />
-            Nouvelle machine
+            <Copy size={14} />
+            {copied ? "Copié !" : "Copier le lien"}
           </button>
-        )}
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390]"
+            >
+              <Plus size={16} />
+              Nouvelle machine
+            </button>
+          )}
+        </div>
       </div>
 
       {machines.length === 0 && (

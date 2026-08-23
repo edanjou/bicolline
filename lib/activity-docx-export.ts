@@ -415,7 +415,7 @@ const DOCX_IMAGE_TYPE_BY_MIME: Record<string, "jpg" | "png" | "gif" | "bmp"> =
 
 const MAP_IMAGE_MAX_WIDTH = 500;
 
-async function chapterMapImage(url: string): Promise<Paragraph[]> {
+async function blockImage(url: string): Promise<Paragraph[]> {
   try {
     const response = await fetch(url);
     if (!response.ok) return [];
@@ -450,7 +450,7 @@ async function chapterChildren(chapter: ActivityChapter): Promise<Paragraph[]> {
   const children: Paragraph[] = [
     heading(chapter.title, 1),
     ...htmlToParagraphs(chapter.game_text),
-    ...(chapter.map_url ? await chapterMapImage(chapter.map_url) : []),
+    ...(chapter.map_url ? await blockImage(chapter.map_url) : []),
   ];
 
   if (chapter.objectives.length > 0) {
@@ -495,7 +495,7 @@ async function chapterChildren(chapter: ActivityChapter): Promise<Paragraph[]> {
   return children;
 }
 
-export async function exportMontageDocumentToDocx(input: {
+export async function exportBlocksDocumentToDocx(input: {
   activity: Activity;
   formattedDate: string;
   blocks: DocumentBlock[];
@@ -507,11 +507,24 @@ export async function exportMontageDocumentToDocx(input: {
   ];
 
   for (const block of blocks) {
-    if (block.block_type !== "custom_text") continue;
-    if (block.label) {
-      children.push(heading(block.label, 3));
+    if (block.block_type === "custom_text") {
+      if (block.label) {
+        children.push(heading(block.label, 3));
+      }
+      children.push(...htmlToParagraphs(block.content));
+    } else if (block.block_type === "image" && block.content) {
+      children.push(...(await blockImage(block.content)));
+      if (block.label) {
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [
+              new TextRun({ text: block.label, italics: true, color: COLORS.muted, size: 18 }),
+            ],
+          }),
+        );
+      }
     }
-    children.push(...htmlToParagraphs(block.content));
   }
 
   const doc = new Document({

@@ -23,6 +23,7 @@ import {
   BookOpen,
   BookText,
   ChevronDown,
+  ChevronsUpDown,
   ChevronUp,
   ClipboardList,
   Clock,
@@ -37,6 +38,7 @@ import {
   Import,
   ListChecks,
   Map as MapIcon,
+  PackageMinus,
   Phone,
   PocketKnife,
   Plus,
@@ -62,6 +64,7 @@ import MarechalTeamPanel from "@/components/marechal-team-panel";
 import MedicTeamPanel from "@/components/medic-team-panel";
 import { Pagination, usePagination } from "@/components/pagination";
 import RequireFeature from "@/components/require-feature";
+import SortableDocumentBlockRow from "@/components/document-block-row";
 import RichTextEditor from "@/components/rich-text-editor";
 import WeaponMasterTeamPanel from "@/components/weapon-master-team-panel";
 import {
@@ -79,7 +82,7 @@ import {
   buildFrontsExportInfo,
   downloadBlob,
   exportActivityDocumentToDocx,
-  exportMontageDocumentToDocx,
+  exportBlocksDocumentToDocx,
 } from "@/lib/activity-docx-export";
 import {
   buildDefaultBlocks,
@@ -88,6 +91,7 @@ import {
   saveDocumentBlocks,
   STANDARD_BLOCK_ORDER,
   type DocumentBlock,
+  type DocumentType,
   type StandardDocumentBlockType,
 } from "@/lib/activity-document";
 import {
@@ -168,6 +172,7 @@ function formatActivityDate(dateStr: string): string {
 }
 
 type SortDirection = "asc" | "desc";
+type ActivitySortField = "name" | "date";
 
 function ActivityModal({
   initial,
@@ -2534,80 +2539,6 @@ function ActivityDetailsModal({
   );
 }
 
-function SortableDocumentBlockRow({
-  block,
-  title,
-  onRemove,
-  onLabelChange,
-  onContentChange,
-}: {
-  block: DocumentBlock;
-  title: string;
-  onRemove: (id: string) => void;
-  onLabelChange: (id: string, label: string) => void;
-  onContentChange: (id: string, content: string) => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: block.id });
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`rounded-lg border border-black/[.08] p-3 dark:border-white/[.145] ${
-        isDragging ? "relative z-10 opacity-50" : ""
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          aria-label="Déplacer"
-          className="cursor-grab touch-none text-foreground/40 hover:text-foreground/70"
-        >
-          <GripVertical size={14} />
-        </button>
-        {block.block_type === "custom_text" ? (
-          <input
-            type="text"
-            value={block.label ?? ""}
-            onChange={(e) => onLabelChange(block.id, e.target.value)}
-            placeholder="Titre du bloc (optionnel)"
-            className={`flex-1 ${chapterFieldClassName}`}
-          />
-        ) : (
-          <p className="flex-1 font-medium text-foreground">{title}</p>
-        )}
-        <button
-          type="button"
-          onClick={() => onRemove(block.id)}
-          aria-label="Retirer"
-          className="text-foreground/50 hover:text-foreground"
-        >
-          <X size={14} />
-        </button>
-      </div>
-      {block.block_type === "custom_text" && (
-        <div className="mt-2">
-          <RichTextEditor
-            value={block.content ?? ""}
-            onChange={(html) => onContentChange(block.id, html)}
-            placeholder="Contenu du bloc…"
-            minHeight="6rem"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ActivityDocumentModal({
   activity,
   canWrite,
@@ -2651,6 +2582,9 @@ function ActivityDocumentModal({
     }
     if (block.block_type === "custom_text") {
       return block.label || "Bloc de texte";
+    }
+    if (block.block_type === "image") {
+      return block.label || "Carte terrain";
     }
     return DOCUMENT_BLOCK_LABELS[block.block_type];
   };
@@ -2935,25 +2869,37 @@ function ActivityDocumentModal({
   );
 }
 
-function MontageDocumentModal({
+function SimpleDocumentModal({
   activity,
+  documentType,
+  title,
   canWrite,
   onClose,
 }: {
   activity: Activity;
+  documentType: DocumentType;
+  title: string;
   canWrite: boolean;
   onClose: () => void;
 }) {
   const [blocks, setBlocks] = useState<DocumentBlock[]>([]);
+  const [chapters, setChapters] = useState<ActivityChapter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listDocumentBlocks(activity.id, "montage")
-      .then(setBlocks)
+    Promise.all([
+      listDocumentBlocks(activity.id, documentType),
+      listActivityChapters(activity.id),
+    ])
+      .then(([savedBlocks, chapterList]) => {
+        setBlocks(savedBlocks);
+        setChapters(chapterList);
+      })
       .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- documentType is stable per modal instance
   }, [activity.id]);
 
   const blockTitle = (block: DocumentBlock): string =>
@@ -2973,6 +2919,44 @@ function MontageDocumentModal({
       },
     ]);
   };
+
+  const addImageBlock = () => {
+    if (!canWrite) return;
+    setBlocks((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        block_type: "image",
+        chapter_id: null,
+        label: "",
+        content: "",
+        position: prev.length,
+      },
+    ]);
+  };
+
+  const addChapterMapBlock = (chapter: ActivityChapter) => {
+    if (!canWrite || !chapter.map_url) return;
+    setBlocks((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        block_type: "image",
+        chapter_id: null,
+        label: chapter.title,
+        content: chapter.map_url,
+        position: prev.length,
+      },
+    ]);
+  };
+
+  const chapterMapsToAdd = chapters.filter(
+    (c) =>
+      c.map_url &&
+      !blocks.some(
+        (b) => b.block_type === "image" && b.content === c.map_url,
+      ),
+  );
 
   const removeBlock = (id: string) => {
     if (!canWrite) return;
@@ -3015,7 +2999,7 @@ function MontageDocumentModal({
     setError(null);
     setIsSaving(true);
     try {
-      await saveDocumentBlocks(activity.id, "montage", blocks);
+      await saveDocumentBlocks(activity.id, documentType, blocks);
     } catch {
       setError("Échec de l'enregistrement.");
     } finally {
@@ -3028,13 +3012,13 @@ function MontageDocumentModal({
     setError(null);
     setIsExporting(true);
     try {
-      await saveDocumentBlocks(activity.id, "montage", blocks);
-      const blob = await exportMontageDocumentToDocx({
+      await saveDocumentBlocks(activity.id, documentType, blocks);
+      const blob = await exportBlocksDocumentToDocx({
         activity,
         formattedDate: formatActivityDate(activity.date),
         blocks,
       });
-      downloadBlob(blob, `Montage — ${activity.name}.docx`);
+      downloadBlob(blob, `${title} — ${activity.name}.docx`);
     } catch {
       setError("Échec de l'exportation Word.");
     } finally {
@@ -3053,7 +3037,7 @@ function MontageDocumentModal({
       >
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-foreground">
-            Montage — {activity.name}
+            {title} — {activity.name}
           </h2>
           <button
             type="button"
@@ -3108,15 +3092,43 @@ function MontageDocumentModal({
               </p>
             )}
 
+            {canWrite && chapterMapsToAdd.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 border-t border-black/[.08] pt-3 dark:border-white/[.08]">
+                <span className="text-xs text-foreground/60">
+                  Cartes des chapitres :
+                </span>
+                {chapterMapsToAdd.map((chapter) => (
+                  <button
+                    key={chapter.id}
+                    type="button"
+                    onClick={() => addChapterMapBlock(chapter)}
+                    className="rounded-full border border-black/[.08] px-3 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                  >
+                    + {chapter.title}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {canWrite && (
-              <button
-                type="button"
-                onClick={addTextBlock}
-                className="flex items-center justify-center gap-2 self-start rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-              >
-                <Plus size={14} />
-                Ajouter un bloc de texte
-              </button>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={addTextBlock}
+                  className="flex items-center justify-center gap-2 self-start rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                >
+                  <Plus size={14} />
+                  Ajouter un bloc de texte
+                </button>
+                <button
+                  type="button"
+                  onClick={addImageBlock}
+                  className="flex items-center justify-center gap-2 self-start rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                >
+                  <MapIcon size={14} />
+                  Ajouter une carte terrain
+                </button>
+              </div>
             )}
           </>
         )}
@@ -3150,7 +3162,7 @@ function MontageDocumentModal({
               disabled={isExporting || isLoading}
               className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <Hammer size={14} />
+              <FileText size={14} />
               {isExporting ? "…" : "Exporter en Word"}
             </button>
           )}
@@ -3804,6 +3816,9 @@ function ActivitesContent() {
   const [montageActivity, setMontageActivity] = useState<Activity | null>(
     null,
   );
+  const [demontageActivity, setDemontageActivity] = useState<Activity | null>(
+    null,
+  );
   const [linkedDocumentsActivity, setLinkedDocumentsActivity] =
     useState<Activity | null>(null);
   const [documentLinkCounts, setDocumentLinkCounts] = useState<
@@ -3811,6 +3826,7 @@ function ActivitesContent() {
   >({});
   const [isDefaultTemplateOpen, setIsDefaultTemplateOpen] = useState(false);
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortField, setSortField] = useState<ActivitySortField>("date");
   const [searchQuery, setSearchQuery] = useState("");
   const [hasFullAccess, setHasFullAccess] = useState(true);
   const [tab, setTab] = useState<PageTab>("campagnes");
@@ -3931,9 +3947,23 @@ function ActivitesContent() {
     setActivities((prev) => prev.filter((a) => a.id !== activity.id));
   };
 
-  const toggleSortDirection = () => {
-    setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+  const handleSort = (field: ActivitySortField) => {
+    if (field === sortField) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
   };
+
+  const activityComparator = (a: Activity, b: Activity) => {
+    const cmp =
+      sortField === "name"
+        ? a.name.localeCompare(b.name, "fr")
+        : a.date.localeCompare(b.date);
+    return sortDirection === "asc" ? cmp : -cmp;
+  };
+  const sortedActivities = [...activities].sort(activityComparator);
 
   const query = searchQuery.trim().toLowerCase();
   const visibleActivities = activities
@@ -3945,10 +3975,7 @@ function ActivitesContent() {
         String(a.number_of_fronts).includes(query) ||
         String(a.participants_per_front).includes(query),
     )
-    .sort((a, b) => {
-      const cmp = a.date.localeCompare(b.date);
-      return sortDirection === "asc" ? cmp : -cmp;
-    });
+    .sort(activityComparator);
   const {
     page: activitiesPage,
     pageCount: activitiesPageCount,
@@ -4047,18 +4074,39 @@ function ActivitesContent() {
                 <table className="w-full min-w-[700px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                      <th className="py-2 pr-4 font-medium">Nom</th>
                       <th className="py-2 pr-4 font-medium">
                         <button
                           type="button"
-                          onClick={toggleSortDirection}
+                          onClick={() => handleSort("name")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Nom
+                          {sortField === "name" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("date")}
                           className="flex items-center gap-1 hover:text-foreground"
                         >
                           Date
-                          {sortDirection === "asc" ? (
-                            <ChevronUp size={14} />
+                          {sortField === "date" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
                           ) : (
-                            <ChevronDown size={14} />
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
                           )}
                         </button>
                       </th>
@@ -4123,7 +4171,14 @@ function ActivitesContent() {
                                 className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
                               >
                                 <Hammer size={14} />
-                                Montage
+                                Montage terrain
+                              </button>
+                              <button
+                                onClick={() => setDemontageActivity(activity)}
+                                className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
+                              >
+                                <PackageMinus size={14} />
+                                Plan de démontage
                               </button>
                               <button
                                 onClick={() =>
@@ -4195,8 +4250,42 @@ function ActivitesContent() {
                 <table className="w-full min-w-[600px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                      <th className="py-2 pr-4 font-medium">Nom</th>
-                      <th className="py-2 pr-4 font-medium">Date</th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("name")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Nom
+                          {sortField === "name" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("date")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Date
+                          {sortField === "date" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
                       <th className="py-2 pr-4 font-medium">Disponibles</th>
                       <th className="py-2 pr-4 font-medium">Assignés</th>
                       <th className="py-2 pr-4 font-medium">
@@ -4206,9 +4295,7 @@ function ActivitesContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...activities]
-                      .sort((a, b) => a.date.localeCompare(b.date))
-                      .map((activity) => (
+                    {sortedActivities.map((activity) => (
                         <tr
                           key={activity.id}
                           className="border-b border-black/[.06] odd:bg-black/[.015] dark:border-white/[.06] dark:odd:bg-white/[.03]"
@@ -4272,17 +4359,49 @@ function ActivitesContent() {
                 <table className="w-full min-w-[600px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                      <th className="py-2 pr-4 font-medium">Nom</th>
-                      <th className="py-2 pr-4 font-medium">Date</th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("name")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Nom
+                          {sortField === "name" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("date")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Date
+                          {sortField === "date" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
                       <th className="py-2 pr-4 font-medium">Disponibles</th>
                       <th className="py-2 pr-4 font-medium">Assignés</th>
                       <th className="py-2 pr-4 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[...activities]
-                      .sort((a, b) => a.date.localeCompare(b.date))
-                      .map((activity) => (
+                    {sortedActivities.map((activity) => (
                         <tr
                           key={activity.id}
                           className="border-b border-black/[.06] odd:bg-black/[.015] dark:border-white/[.06] dark:odd:bg-white/[.03]"
@@ -4333,17 +4452,49 @@ function ActivitesContent() {
                 <table className="w-full min-w-[600px] text-left text-sm">
                   <thead>
                     <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-                      <th className="py-2 pr-4 font-medium">Nom</th>
-                      <th className="py-2 pr-4 font-medium">Date</th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("name")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Nom
+                          {sortField === "name" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
+                      <th className="py-2 pr-4 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleSort("date")}
+                          className="flex items-center gap-1 hover:text-foreground"
+                        >
+                          Date
+                          {sortField === "date" ? (
+                            sortDirection === "asc" ? (
+                              <ChevronUp size={14} />
+                            ) : (
+                              <ChevronDown size={14} />
+                            )
+                          ) : (
+                            <ChevronsUpDown size={14} className="text-foreground/30" />
+                          )}
+                        </button>
+                      </th>
                       <th className="py-2 pr-4 font-medium">Disponibles</th>
                       <th className="py-2 pr-4 font-medium">Assignés</th>
                       <th className="py-2 pr-4 font-medium">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[...activities]
-                      .sort((a, b) => a.date.localeCompare(b.date))
-                      .map((activity) => (
+                    {sortedActivities.map((activity) => (
                         <tr
                           key={activity.id}
                           className="border-b border-black/[.06] odd:bg-black/[.015] dark:border-white/[.06] dark:odd:bg-white/[.03]"
@@ -4424,10 +4575,21 @@ function ActivitesContent() {
         />
       )}
       {montageActivity && (
-        <MontageDocumentModal
+        <SimpleDocumentModal
           activity={montageActivity}
+          documentType="montage"
+          title="Montage terrain"
           canWrite={hasFullAccess}
           onClose={() => setMontageActivity(null)}
+        />
+      )}
+      {demontageActivity && (
+        <SimpleDocumentModal
+          activity={demontageActivity}
+          documentType="demontage"
+          title="Plan de démontage"
+          canWrite={hasFullAccess}
+          onClose={() => setDemontageActivity(null)}
         />
       )}
       {linkedDocumentsActivity && (

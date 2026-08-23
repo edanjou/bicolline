@@ -1,7 +1,7 @@
 import type { ActivityChapter } from "@/lib/activity-chapters";
 import { supabase } from "@/lib/supabase";
 
-export type DocumentType = "briefing" | "montage";
+export type DocumentType = "briefing" | "montage" | "demontage";
 
 export type DocumentBlockType =
   | "game_text"
@@ -10,7 +10,8 @@ export type DocumentBlockType =
   | "details_game_elements"
   | "details_contact"
   | "chapter"
-  | "custom_text";
+  | "custom_text"
+  | "image";
 
 export type DocumentBlock = {
   id: string;
@@ -22,7 +23,7 @@ export type DocumentBlock = {
 };
 
 export const DOCUMENT_BLOCK_LABELS: Record<
-  Exclude<DocumentBlockType, "chapter" | "custom_text">,
+  Exclude<DocumentBlockType, "chapter" | "custom_text" | "image">,
   string
 > = {
   game_text: "Texte jeu",
@@ -34,7 +35,7 @@ export const DOCUMENT_BLOCK_LABELS: Record<
 
 export type StandardDocumentBlockType = Exclude<
   DocumentBlockType,
-  "chapter" | "custom_text"
+  "chapter" | "custom_text" | "image"
 >;
 
 export const STANDARD_BLOCK_ORDER: StandardDocumentBlockType[] = [

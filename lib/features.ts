@@ -36,6 +36,9 @@ export const MODULES: ModuleDefinition[] = [
   { key: "cles", label: "Clés" },
   { key: "impressions", label: "Impressions" },
   { key: "inventaire-combat", label: "Inventaire matériel (Combat)" },
+  { key: "costumes", label: "Costumes et accessoires" },
+  { key: "calendrier", label: "Calendrier" },
+  { key: "comite-combat", label: "Comité Combat" },
 ];
 
 function moduleByKey(key: string): ModuleDefinition {
@@ -92,6 +95,7 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
     ],
   },
   { type: "leaf", module: moduleByKey("jeu") },
+  { type: "leaf", module: moduleByKey("comite-combat") },
   {
     type: "group",
     label: "Outils",
@@ -101,6 +105,8 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
       { type: "leaf", module: moduleByKey("radios") },
       { type: "leaf", module: moduleByKey("cles") },
       { type: "leaf", module: moduleByKey("impressions") },
+      { type: "leaf", module: moduleByKey("costumes") },
+      { type: "leaf", module: moduleByKey("calendrier") },
     ],
   },
 ];

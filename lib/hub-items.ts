@@ -5,6 +5,7 @@ import {
   Brain,
   BriefcaseMedical,
   CalendarClock,
+  CalendarDays,
   Castle,
   ChessKnight,
   ChessPawn,
@@ -12,6 +13,7 @@ import {
   Clock,
   ClipboardList,
   Drama,
+  Gavel,
   Hammer,
   Home,
   IdCard,
@@ -29,6 +31,7 @@ import {
   ScrollText,
   ShieldCheck,
   ShieldUser,
+  Shirt,
   Swords,
   Theater,
   Trophy,
@@ -117,6 +120,18 @@ export const OUTILS_ITEMS: HubItem[] = [
     label: "Impressions",
     icon: Printer,
     moduleKey: "impressions",
+  },
+  {
+    href: "/grande-bataille/2026/outils/costumes",
+    label: "Costumes et accessoires",
+    icon: Shirt,
+    moduleKey: "costumes",
+  },
+  {
+    href: "/grande-bataille/2026/outils/calendrier",
+    label: "Calendrier",
+    icon: CalendarDays,
+    moduleKey: "calendrier",
   },
 ];
 
@@ -213,6 +228,7 @@ export const CAMPAGNES_ITEMS: HubItem[] = [
     label: "Liste PNJ",
     icon: VenetianMask,
     moduleKey: "pnj",
+    disabled: true,
   },
   {
     href: "/campagnes/activites",
@@ -231,6 +247,7 @@ export const CAMPAGNES_ITEMS: HubItem[] = [
     label: "Scénarios spéciaux",
     icon: ScrollText,
     moduleKey: "scenarios",
+    disabled: true,
   },
 ];
 
@@ -250,6 +267,12 @@ export const DASHBOARD_ITEMS: HubItem[] = [
     childItems: GRANDE_BATAILLE_ITEMS,
   },
   { href: "/jeu", label: "Jeu", icon: ChessKnight, moduleKey: "jeu" },
+  {
+    href: "/comite-combat",
+    label: "Comité Combat",
+    icon: Gavel,
+    moduleKey: "comite-combat",
+  },
   {
     href: "#tournoi-des-nations",
     label: "Tournoi des nations",
@@ -313,6 +336,21 @@ BREADCRUMB_LABELS["/grande-bataille/2026/tournois/volontaires"] =
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/bilan"] = "Bilan";
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/choses-a-faire"] =
   "Choses à faire";
+BREADCRUMB_LABELS["/grande-bataille/2026/tournois/gestion"] =
+  "Gestion des tournois";
+BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika"] = "Taktika";
+BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/equipes"] =
+  "Équipes";
+BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/horaires"] =
+  "Gestion des horaires";
+BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/reglements"] =
+  "Gestion des règlements";
+BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/inventaire"] =
+  "Inventaire matériel";
+BREADCRUMB_LABELS["/comite-combat/reglements"] = "Règles de combat";
+BREADCRUMB_LABELS["/comite-combat/standards"] = "Standards d'homologation";
+BREADCRUMB_LABELS["/comite-combat/avertissements"] = "Avertissements";
+BREADCRUMB_LABELS["/comite-combat/procedures"] = "Procédures";
 BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/horaires"] =
   "Horaires";
 BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/inventaire"] =
