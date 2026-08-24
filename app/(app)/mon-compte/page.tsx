@@ -27,6 +27,7 @@ export default function MonComptePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [title, setTitle] = useState("");
+  const [recoveryEmail, setRecoveryEmail] = useState("");
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [profileMessage, setProfileMessage] = useState<string | null>(null);
@@ -49,13 +50,14 @@ export default function MonComptePage() {
       if (!data.user) return;
       supabase
         .from("profiles")
-        .select("first_name, last_name, title")
+        .select("first_name, last_name, title, recovery_email")
         .eq("id", data.user.id)
         .single()
         .then(({ data: profile }) => {
           setFirstName(profile?.first_name ?? "");
           setLastName(profile?.last_name ?? "");
           setTitle(profile?.title ?? "");
+          setRecoveryEmail(profile?.recovery_email ?? "");
         });
     });
   }, []);
@@ -71,6 +73,7 @@ export default function MonComptePage() {
       .update({
         first_name: firstName,
         last_name: lastName,
+        recovery_email: recoveryEmail || null,
       })
       .eq("id", user.id);
     setIsProfileLoading(false);
@@ -163,6 +166,20 @@ export default function MonComptePage() {
           />
           <p className="-mt-2 text-xs text-foreground/50">
             Le titre ne peut être modifié que par un administrateur.
+          </p>
+          <label className="mt-2 flex flex-col gap-1 text-sm text-foreground">
+            Courriel secondaire (récupération)
+            <input
+              type="email"
+              value={recoveryEmail}
+              onChange={(e) => setRecoveryEmail(e.target.value)}
+              placeholder="ex. un proche ou une autre adresse"
+              className="rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+            />
+          </label>
+          <p className="-mt-2 text-xs text-foreground/50">
+            Visible par l&apos;administrateur pour te joindre si ton courriel
+            principal devient inaccessible.
           </p>
           {profileError && (
             <p className="text-sm text-red-600 dark:text-red-400">

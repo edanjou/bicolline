@@ -27,8 +27,13 @@ type AdminUser = {
   last_name: string | null;
   title: string | null;
   role: "admin" | "user";
+  recovery_email: string | null;
   permissions: { feature: string; granted: boolean }[];
 };
+
+// Compte « super admin » (combatgb) — protégé contre toute modification par
+// un autre admin ; seul son propre titulaire peut le modifier.
+const SUPER_ADMIN_ID = "b1b21bb0-ed2c-4fc1-95b5-2f9c14156c3a";
 
 async function getAuthToken(): Promise<string | null> {
   const { data } = await supabase.auth.getSession();
@@ -576,7 +581,10 @@ export default function UtilisateursPage() {
                 </tr>
               </thead>
               <tbody>
-                {pageItems.map((user) => (
+                {pageItems.map((user) => {
+                  const isProtected =
+                    user.id === SUPER_ADMIN_ID && currentUserId !== SUPER_ADMIN_ID;
+                  return (
                   <tr
                     key={user.id}
                     className="border-b border-black/[.06] odd:bg-black/[.015] dark:border-white/[.06] dark:odd:bg-white/[.03]"
@@ -591,6 +599,14 @@ export default function UtilisateursPage() {
                     </td>
                     <td className="py-2 pr-4 text-foreground/80">
                       {user.email}
+                      {user.recovery_email && (
+                        <p
+                          className="text-xs text-foreground/50"
+                          title="Courriel secondaire (récupération)"
+                        >
+                          {user.recovery_email}
+                        </p>
+                      )}
                     </td>
                     <td className="py-2 pr-4">
                       <select
@@ -601,7 +617,13 @@ export default function UtilisateursPage() {
                             e.target.value as "admin" | "user",
                           )
                         }
-                        className="rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+                        disabled={isProtected}
+                        title={
+                          isProtected
+                            ? "Compte super admin — modifiable seulement par son titulaire."
+                            : undefined
+                        }
+                        className="rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
                       >
                         <option value="user">Utilisateur</option>
                         <option value="admin">Admin</option>
@@ -611,7 +633,13 @@ export default function UtilisateursPage() {
                       <button
                         type="button"
                         onClick={() => setPermissionsUserId(user.id)}
-                        className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
+                        disabled={isProtected}
+                        title={
+                          isProtected
+                            ? "Compte super admin — modifiable seulement par son titulaire."
+                            : undefined
+                        }
+                        className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/[.145] dark:hover:bg-white/[.08]"
                       >
                         <KeyRound size={14} />
                         {user.role === "admin" ? "Accès complet" : "Gérer"}
@@ -630,19 +658,27 @@ export default function UtilisateursPage() {
                         </button>
                         <button
                           onClick={() => setEditingUser(user)}
+                          disabled={isProtected}
                           aria-label="Modifier"
-                          className="rounded-full p-2 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                          title={
+                            isProtected
+                              ? "Compte super admin — modifiable seulement par son titulaire."
+                              : "Modifier"
+                          }
+                          className="rounded-full p-2 text-foreground/60 transition-colors hover:bg-black/[.05] disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-white/[.08]"
                         >
                           <Feather size={16} />
                         </button>
                         <button
                           onClick={() => handleDelete(user)}
-                          disabled={user.id === currentUserId}
+                          disabled={user.id === currentUserId || isProtected}
                           aria-label="Supprimer"
                           title={
                             user.id === currentUserId
                               ? "Tu ne peux pas supprimer ton propre compte."
-                              : "Supprimer"
+                              : isProtected
+                                ? "Compte super admin — modifiable seulement par son titulaire."
+                                : "Supprimer"
                           }
                           className="rounded-full p-2 text-foreground/60 transition-colors hover:bg-black/[.05] disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-white/[.08]"
                         >
@@ -651,7 +687,8 @@ export default function UtilisateursPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
             <Pagination

@@ -50,7 +50,7 @@ export async function GET(request: Request) {
 
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, first_name, last_name, title, role");
+    .select("id, first_name, last_name, title, role, recovery_email");
 
   const { data: permissions } = await admin
     .from("permissions")
@@ -68,6 +68,7 @@ export async function GET(request: Request) {
       last_name: profile?.last_name ?? null,
       title: profile?.title ?? null,
       role: profile?.role ?? "user",
+      recovery_email: profile?.recovery_email ?? null,
       permissions: userPermissions,
     };
   });

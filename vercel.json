@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/sync-religion-members",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/keep-alive",
+      "schedule": "0 9 * * *"
     }
   ]
 }
