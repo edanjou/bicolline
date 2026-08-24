@@ -11,6 +11,7 @@ import type { Character } from "@/lib/characters";
 import {
   createWarning,
   deleteWarning,
+  isWarningExpired,
   listWarnings,
   updateWarning,
   type CombatWarning,
@@ -27,17 +28,6 @@ const SEVERITIES: { key: WarningSeverity; label: string }[] = [
   { key: "expulsion", label: "Expulsion" },
 ];
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString("fr-CA", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function WarningRow({
   warning,
   canWrite,
@@ -53,8 +43,15 @@ function WarningRow({
   onSeverityChange: (id: string, severity: WarningSeverity) => void;
   onRemove: (id: string) => void;
 }) {
+  const expired = isWarningExpired(warning);
+
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-black/[.06] p-3 dark:border-white/[.06]">
+    <div
+      className={`flex flex-wrap items-center gap-3 rounded-lg border border-black/[.06] p-3 dark:border-white/[.06] ${
+        expired ? "opacity-50" : ""
+      }`}
+      title={expired ? "Expiré (plus de 24 mois)" : undefined}
+    >
       <div className="min-w-40 flex-1">
         <p className="font-medium text-foreground">
           {warning.player_name ?? warning.character_name}
@@ -66,7 +63,7 @@ function WarningRow({
           onSeverityChange(warning.id, e.target.value as WarningSeverity)
         }
         disabled={!canWrite}
-        className={`${fieldClassName} disabled:opacity-60`}
+        className={`w-32 ${fieldClassName} disabled:opacity-60`}
       >
         {SEVERITIES.map((s) => (
           <option key={s.key} value={s.key}>
@@ -75,25 +72,19 @@ function WarningRow({
         ))}
       </select>
       <input
-        type="number"
-        value={warning.year}
-        onChange={(e) => onChange(warning.id, { year: Number(e.target.value) })}
-        onBlur={() => onCommit(warning.id)}
-        placeholder="Année"
-        title="Année"
-        disabled={!canWrite}
-        className={`w-20 ${fieldClassName} disabled:opacity-60`}
-      />
-      <input
         type="date"
         value={warning.activity_date ?? ""}
-        onChange={(e) =>
-          onChange(warning.id, { activity_date: e.target.value || null })
-        }
+        onChange={(e) => {
+          const activityDate = e.target.value || null;
+          const year = activityDate
+            ? Number(activityDate.slice(0, 4))
+            : warning.year;
+          onChange(warning.id, { activity_date: activityDate, year });
+        }}
         onBlur={() => onCommit(warning.id)}
-        title="Date de l'activité"
+        title="Date de l'activité (détermine l'année)"
         disabled={!canWrite}
-        className={`${fieldClassName} disabled:opacity-60`}
+        className={`w-36 ${fieldClassName} disabled:opacity-60`}
       />
       <input
         type="text"
@@ -111,14 +102,8 @@ function WarningRow({
         onBlur={() => onCommit(warning.id)}
         placeholder="Arbitre"
         disabled={!canWrite}
-        className={`w-40 ${fieldClassName} disabled:opacity-60`}
+        className={`w-36 ${fieldClassName} disabled:opacity-60`}
       />
-      <span
-        className="w-36 text-xs text-foreground/50"
-        title="Date d'ajout au registre"
-      >
-        {formatDate(warning.created_at)}
-      </span>
       {canWrite && (
         <button
           type="button"

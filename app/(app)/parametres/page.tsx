@@ -24,8 +24,9 @@ import {
   renameBattlefield,
   type Battlefield,
 } from "@/lib/battlefields";
+import { clearEmailLog, listEmailLog, type EmailLogRecord } from "@/lib/email-log";
+import { getModuleAccessLevels, type ModuleAccessLevel } from "@/lib/features";
 import { getOwnProfile } from "@/lib/profile";
-import { listEmailLog, type EmailLogRecord } from "@/lib/email-log";
 import {
   createEventCoordination,
   deleteEventCoordination,
@@ -70,7 +71,7 @@ function formatSyncDate(dateStr: string | null): string {
   });
 }
 
-function GuildSyncSettings() {
+function GuildSyncSettings({ canWrite }: { canWrite: boolean }) {
   const [frequency, setFrequency] = useState<GuildSyncFrequency>("weekly");
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -148,8 +149,8 @@ function GuildSyncSettings() {
           <select
             value={frequency}
             onChange={handleChange}
-            disabled={isSaving}
-            className="rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+            disabled={isSaving || !canWrite}
+            className="rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
           >
             {GUILD_SYNC_FREQUENCIES.map((f) => (
               <option key={f.value} value={f.value}>
@@ -157,14 +158,16 @@ function GuildSyncSettings() {
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={handleSyncNow}
-            disabled={isSyncing}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSyncing ? "Synchronisation…" : "Synchroniser"}
-          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={handleSyncNow}
+              disabled={isSyncing}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSyncing ? "Synchronisation…" : "Synchroniser"}
+            </button>
+          )}
           <span className="text-sm text-foreground/60">
             Dernière synchronisation : {formatSyncDate(lastSyncedAt)}
           </span>
@@ -192,6 +195,7 @@ function ChunkedSyncSettings({
   getLastSyncedAt,
   getFrequency,
   setFrequency: saveFrequency,
+  canWrite,
 }: {
   title: string;
   description: string;
@@ -201,6 +205,7 @@ function ChunkedSyncSettings({
   getLastSyncedAt: () => Promise<string | null>;
   getFrequency: () => Promise<GuildSyncFrequency>;
   setFrequency: (frequency: GuildSyncFrequency) => Promise<void>;
+  canWrite: boolean;
 }) {
   const [frequency, setFrequency] = useState<GuildSyncFrequency>("weekly");
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -292,8 +297,8 @@ function ChunkedSyncSettings({
           <select
             value={frequency}
             onChange={handleFrequencyChange}
-            disabled={isSavingFrequency}
-            className="rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+            disabled={isSavingFrequency || !canWrite}
+            className="rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
           >
             {GUILD_SYNC_FREQUENCIES.map((f) => (
               <option key={f.value} value={f.value}>
@@ -301,14 +306,16 @@ function ChunkedSyncSettings({
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={handleSyncNow}
-            disabled={isSyncing}
-            className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSyncing ? "Synchronisation…" : "Synchroniser"}
-          </button>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={handleSyncNow}
+              disabled={isSyncing}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSyncing ? "Synchronisation…" : "Synchroniser"}
+            </button>
+          )}
           <span className="text-sm text-foreground/60">
             Dernière synchronisation : {formatSyncDate(lastSyncedAt)}
           </span>
@@ -330,10 +337,11 @@ function ChunkedSyncSettings({
   );
 }
 
-function EmailLogSettings() {
+function EmailLogSettings({ canWrite }: { canWrite: boolean }) {
   const [entries, setEntries] = useState<EmailLogRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   const fetchEntries = async () => {
     setIsLoading(true);
@@ -353,6 +361,20 @@ function EmailLogSettings() {
     fetchEntries();
   }, []);
 
+  const handleClear = async () => {
+    if (!window.confirm("Effacer tout le journal des courriels ?")) return;
+    setIsClearing(true);
+    try {
+      const token = await getAuthToken();
+      await clearEmailLog(token);
+      setEntries([]);
+    } catch {
+      alert("Échec de l'effacement du journal.");
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   return (
     <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-zinc-900">
       <div className="flex items-center justify-between">
@@ -364,13 +386,25 @@ function EmailLogSettings() {
             Les 200 derniers courriels envoyés par l&apos;outil.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={fetchEntries}
-          className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
-        >
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchEntries}
+            className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
+          >
+            Actualiser
+          </button>
+          {canWrite && entries.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={isClearing}
+              className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-white/[.145] dark:text-red-400 dark:hover:bg-red-950/30"
+            >
+              {isClearing ? "Effacement…" : "Effacer"}
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -425,7 +459,7 @@ function EmailLogSettings() {
   );
 }
 
-function BattlefieldsSettings() {
+function BattlefieldsSettings({ canWrite }: { canWrite: boolean }) {
   const [battlefields, setBattlefields] = useState<Battlefield[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -524,46 +558,52 @@ function BattlefieldsSettings() {
                 className="flex items-center gap-1 rounded-full border border-black/[.08] py-1 pl-3 pr-1 text-xs text-foreground dark:border-white/[.145]"
               >
                 {b.name}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(b.id);
-                    setEditingName(b.name);
-                  }}
-                  aria-label="Modifier"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Feather size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(b)}
-                  aria-label="Supprimer"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {canWrite && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(b.id);
+                        setEditingName(b.name);
+                      }}
+                      aria-label="Modifier"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Feather size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(b)}
+                      aria-label="Supprimer"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
               </div>
             ),
           )}
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nouveau champ de bataille…"
-          className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
-        >
-          <Plus size={16} />
-        </button>
-      </form>
+      {canWrite && (
+        <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nouveau champ de bataille…"
+            className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
+          >
+            <Plus size={16} />
+          </button>
+        </form>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -572,7 +612,7 @@ function BattlefieldsSettings() {
   );
 }
 
-function QuartiersSettings() {
+function QuartiersSettings({ canWrite }: { canWrite: boolean }) {
   const [quartiers, setQuartiers] = useState<Quartier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -667,46 +707,52 @@ function QuartiersSettings() {
                 className="flex items-center gap-1 rounded-full border border-black/[.08] py-1 pl-3 pr-1 text-xs text-foreground dark:border-white/[.145]"
               >
                 {q.name}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(q.id);
-                    setEditingName(q.name);
-                  }}
-                  aria-label="Modifier"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Feather size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(q)}
-                  aria-label="Supprimer"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {canWrite && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(q.id);
+                        setEditingName(q.name);
+                      }}
+                      aria-label="Modifier"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Feather size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(q)}
+                      aria-label="Supprimer"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
               </div>
             ),
           )}
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nouveau quartier…"
-          className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
-        >
-          <Plus size={16} />
-        </button>
-      </form>
+      {canWrite && (
+        <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nouveau quartier…"
+            className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
+          >
+            <Plus size={16} />
+          </button>
+        </form>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -715,7 +761,7 @@ function QuartiersSettings() {
   );
 }
 
-function TaskTypesSettings() {
+function TaskTypesSettings({ canWrite }: { canWrite: boolean }) {
   const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -811,46 +857,52 @@ function TaskTypesSettings() {
                 className="flex items-center gap-1 rounded-full border border-black/[.08] py-1 pl-3 pr-1 text-xs text-foreground dark:border-white/[.145]"
               >
                 {t.name}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(t.id);
-                    setEditingName(t.name);
-                  }}
-                  aria-label="Modifier"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Feather size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(t)}
-                  aria-label="Supprimer"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {canWrite && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(t.id);
+                        setEditingName(t.name);
+                      }}
+                      aria-label="Modifier"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Feather size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(t)}
+                      aria-label="Supprimer"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
               </div>
             ),
           )}
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nouveau type de tâche…"
-          className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
-        >
-          <Plus size={16} />
-        </button>
-      </form>
+      {canWrite && (
+        <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nouveau type de tâche…"
+            className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
+          >
+            <Plus size={16} />
+          </button>
+        </form>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -859,7 +911,7 @@ function TaskTypesSettings() {
   );
 }
 
-function EventCoordinationsSettings() {
+function EventCoordinationsSettings({ canWrite }: { canWrite: boolean }) {
   const [coordinations, setCoordinations] = useState<EventCoordination[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newName, setNewName] = useState("");
@@ -956,46 +1008,52 @@ function EventCoordinationsSettings() {
                 className="flex items-center gap-1 rounded-full border border-black/[.08] py-1 pl-3 pr-1 text-xs text-foreground dark:border-white/[.145]"
               >
                 {c.name}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(c.id);
-                    setEditingName(c.name);
-                  }}
-                  aria-label="Modifier"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Feather size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(c)}
-                  aria-label="Supprimer"
-                  className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
-                >
-                  <Trash2 size={12} />
-                </button>
+                {canWrite && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(c.id);
+                        setEditingName(c.name);
+                      }}
+                      aria-label="Modifier"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Feather size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(c)}
+                      aria-label="Supprimer"
+                      className="rounded-full p-1 text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </>
+                )}
               </div>
             ),
           )}
         </div>
       )}
 
-      <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
-        <input
-          type="text"
-          value={newName}
-          onChange={(e) => setNewName(e.target.value)}
-          placeholder="Nouvelle coordination…"
-          className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
-        >
-          <Plus size={16} />
-        </button>
-      </form>
+      {canWrite && (
+        <form onSubmit={handleCreate} className="mt-3 flex items-center gap-2">
+          <input
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nouvelle coordination…"
+            className="w-64 rounded-full border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-primary p-1.5 text-white transition-colors hover:bg-[#0c4390]"
+          >
+            <Plus size={16} />
+          </button>
+        </form>
+      )}
 
       {error && (
         <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
@@ -1004,7 +1062,7 @@ function EventCoordinationsSettings() {
   );
 }
 
-function VolunteerBenefitSettingsPanel() {
+function VolunteerBenefitSettingsPanel({ canWrite }: { canWrite: boolean }) {
   const [settings, setSettings] = useState<VolunteerBenefitSettings | null>(
     null,
   );
@@ -1047,7 +1105,8 @@ function VolunteerBenefitSettingsPanel() {
           value={settings?.[key] ?? 0}
           onChange={(e) => handleChange(key, Number(e.target.value))}
           onBlur={() => handleBlur(key)}
-          className="w-20 rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+          disabled={!canWrite}
+          className="w-20 rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
         />
         <span className="text-xs text-foreground/50">{suffix}</span>
       </div>
@@ -1085,12 +1144,48 @@ function VolunteerBenefitSettingsPanel() {
   );
 }
 
+function CategoryGroup({
+  title,
+  level,
+  children,
+}: {
+  title: string;
+  level: ModuleAccessLevel;
+  children: React.ReactNode;
+}) {
+  if (level === "none") return null;
+  return (
+    <div className="flex flex-col gap-4">
+      <h2
+        className={`${glofters.className} text-xl text-foreground/80`}
+      >
+        {title}
+      </h2>
+      <div className="flex flex-col gap-6">{children}</div>
+    </div>
+  );
+}
+
 export default function ParametresPage() {
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [levels, setLevels] = useState<Record<string, ModuleAccessLevel>>({});
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    getOwnProfile().then((profile) => setIsAdmin(profile?.role === "admin"));
+    getOwnProfile().then(async (profile) => {
+      setLevels(profile ? await getModuleAccessLevels(profile) : {});
+      setIsLoading(false);
+    });
   }, []);
+
+  const syncLevel = levels["parametres-synchronisation"] ?? "none";
+  const listesLevel = levels["parametres-listes"] ?? "none";
+  const communicationsLevel = levels["parametres-communications"] ?? "none";
+  const benevolatLevel = levels["parametres-benevolat"] ?? "none";
+  const hasAnyAccess =
+    syncLevel !== "none" ||
+    listesLevel !== "none" ||
+    communicationsLevel !== "none" ||
+    benevolatLevel !== "none";
 
   return (
     <div>
@@ -1099,38 +1194,55 @@ export default function ParametresPage() {
       </h1>
       <Breadcrumb />
 
-      {isAdmin ? (
-        <div className="mt-8 flex flex-col gap-6">
-          <GuildSyncSettings />
-          <ChunkedSyncSettings
-            title="Synchronisation des personnages"
-            description="Nom, guilde, croyance, statut PNJ, ainsi que le nom et l'email du joueur associé, depuis bicolline.online. Plusieurs centaines de pages — la synchronisation peut prendre quelques minutes."
-            endpoint="/api/admin/sync-characters"
-            resultKey="charactersSynced"
-            unitLabel="personnages"
-            getLastSyncedAt={getCharacterLastSyncedAt}
-            getFrequency={getCharacterSyncFrequency}
-            setFrequency={setCharacterSyncFrequency}
-          />
-          <ChunkedSyncSettings
-            title="Synchronisation des croyances et titres"
-            description="Croyance, clerc, prêtre et grand prêtre par personnage, depuis bicolline.online. Plusieurs centaines de pages — la synchronisation peut prendre quelques minutes."
-            endpoint="/api/admin/sync-religion-members"
-            resultKey="membersSynced"
-            unitLabel="entrées"
-            getLastSyncedAt={getReligionMemberLastSyncedAt}
-            getFrequency={getReligionMemberSyncFrequency}
-            setFrequency={setReligionMemberSyncFrequency}
-          />
-          <EmailLogSettings />
-          <BattlefieldsSettings />
-          <QuartiersSettings />
-          <TaskTypesSettings />
-          <EventCoordinationsSettings />
-          <VolunteerBenefitSettingsPanel />
-        </div>
-      ) : (
+      {isLoading ? (
+        <p className="mt-8 text-sm text-foreground/60">Chargement…</p>
+      ) : !hasAnyAccess ? (
         <p className="mt-2 text-foreground/70">À venir.</p>
+      ) : (
+        <div className="mt-8 flex flex-col gap-10">
+          <CategoryGroup title="Synchronisation" level={syncLevel}>
+            <GuildSyncSettings canWrite={syncLevel === "ecriture"} />
+            <ChunkedSyncSettings
+              title="Synchronisation des personnages"
+              description="Nom, guilde, croyance, statut PNJ, ainsi que le nom et l'email du joueur associé, depuis bicolline.online. Plusieurs centaines de pages — la synchronisation peut prendre quelques minutes."
+              endpoint="/api/admin/sync-characters"
+              resultKey="charactersSynced"
+              unitLabel="personnages"
+              getLastSyncedAt={getCharacterLastSyncedAt}
+              getFrequency={getCharacterSyncFrequency}
+              setFrequency={setCharacterSyncFrequency}
+              canWrite={syncLevel === "ecriture"}
+            />
+            <ChunkedSyncSettings
+              title="Synchronisation des croyances et titres"
+              description="Croyance, clerc, prêtre et grand prêtre par personnage, depuis bicolline.online. Plusieurs centaines de pages — la synchronisation peut prendre quelques minutes."
+              endpoint="/api/admin/sync-religion-members"
+              resultKey="membersSynced"
+              unitLabel="entrées"
+              getLastSyncedAt={getReligionMemberLastSyncedAt}
+              getFrequency={getReligionMemberSyncFrequency}
+              setFrequency={setReligionMemberSyncFrequency}
+              canWrite={syncLevel === "ecriture"}
+            />
+          </CategoryGroup>
+
+          <CategoryGroup title="Communications" level={communicationsLevel}>
+            <EmailLogSettings canWrite={communicationsLevel === "ecriture"} />
+          </CategoryGroup>
+
+          <CategoryGroup title="Listes réutilisables" level={listesLevel}>
+            <BattlefieldsSettings canWrite={listesLevel === "ecriture"} />
+            <QuartiersSettings canWrite={listesLevel === "ecriture"} />
+            <TaskTypesSettings canWrite={listesLevel === "ecriture"} />
+            <EventCoordinationsSettings canWrite={listesLevel === "ecriture"} />
+          </CategoryGroup>
+
+          <CategoryGroup title="Bénévolat" level={benevolatLevel}>
+            <VolunteerBenefitSettingsPanel
+              canWrite={benevolatLevel === "ecriture"}
+            />
+          </CategoryGroup>
+        </div>
       )}
     </div>
   );

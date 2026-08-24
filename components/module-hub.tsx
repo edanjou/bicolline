@@ -86,6 +86,20 @@ export function titleSizeClass(label: string): string {
   return "text-[36px] lg:text-[24px] xl:text-[30px] 2xl:text-[36px]";
 }
 
+function HubTitle({ label, className }: { label: string; className: string }) {
+  const spaceIndex = label.indexOf(" ");
+  if (spaceIndex === -1) {
+    return <h2 className={className}>{label}</h2>;
+  }
+  return (
+    <h2 className={className}>
+      {label.slice(0, spaceIndex)}
+      <br />
+      {label.slice(spaceIndex + 1)}
+    </h2>
+  );
+}
+
 export function SortableHubCard({
   item,
   suppressClickRef,
@@ -119,11 +133,10 @@ export function SortableHubCard({
       <div className="icon-badge-hover flex h-[55px] w-[55px] flex-shrink-0 items-center justify-center rounded-full bg-primary text-white">
         <Icon size={25} className="group-hover:animate-wiggle" />
       </div>
-      <h2
+      <HubTitle
+        label={item.label}
         className={`${glofters.className} ${titleSizeClass(item.label)} line-clamp-2 min-w-0 break-words leading-[0.9] text-foreground`}
-      >
-        {item.label}
-      </h2>
+      />
     </div>
   );
 }
@@ -145,11 +158,10 @@ function PinnedHubCard({ item }: { item: HubItem }) {
       <div className="icon-badge-hover flex h-[55px] w-[55px] flex-shrink-0 items-center justify-center rounded-full bg-primary text-white">
         <Icon size={25} className="group-hover:animate-wiggle" />
       </div>
-      <h2
+      <HubTitle
+        label={item.label}
         className={`${glofters.className} ${titleSizeClass(item.label)} line-clamp-2 min-w-0 break-words leading-[0.9] text-foreground`}
-      >
-        {item.label}
-      </h2>
+      />
     </div>
   );
 }
@@ -162,11 +174,10 @@ function DisabledHubCard({ item }: { item: HubItem }) {
         <Icon size={25} />
       </div>
       <div className="flex min-w-0 flex-col gap-1">
-        <h2
+        <HubTitle
+          label={item.label}
           className={`${glofters.className} ${titleSizeClass(item.label)} line-clamp-2 min-w-0 break-words leading-[0.9] text-foreground`}
-        >
-          {item.label}
-        </h2>
+        />
         <span className="w-fit rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-foreground/50">
           Bientôt
         </span>

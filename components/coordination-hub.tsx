@@ -24,7 +24,7 @@ import { supabase } from "@/lib/supabase";
 import { SortableHubCard, type HubItem } from "@/components/module-hub";
 
 const DEFAULT_MODULES = [
-  { slug: "volontaires", label: "Gestion des volontaires", icon: Users },
+  { slug: "volontaires", label: "Volontaires", icon: Users },
   { slug: "feuille-de-temps", label: "Feuille de temps", icon: Clock },
   { slug: "bilan", label: "Bilan", icon: NotebookPen },
   { slug: "choses-a-faire", label: "Choses à faire", icon: ListChecks },

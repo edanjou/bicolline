@@ -12,7 +12,7 @@ export const MODULES: ModuleDefinition[] = [
   { key: "editeur-carte", label: "Création de carte" },
   { key: "activites", label: "Campagnes militaires" },
   { key: "grandes-batailles", label: "Grandes Batailles" },
-  { key: "benevoles", label: "Gestion des volontaires" },
+  { key: "benevoles", label: "Volontaires" },
   { key: "bilan", label: "Bilan" },
   { key: "escarmouches", label: "Escarmouches" },
   { key: "scenarios", label: "Scénarios" },
@@ -31,7 +31,7 @@ export const MODULES: ModuleDefinition[] = [
   { key: "operations", label: "Opérations" },
   { key: "administration", label: "Administration" },
   { key: "plateaux", label: "Réservation des plateaux" },
-  { key: "volontaires-centralise", label: "Gestion des volontaires (centralisée)" },
+  { key: "volontaires-centralise", label: "Volontaires (centralisée)" },
   { key: "radios", label: "Radios" },
   { key: "cles", label: "Clés" },
   { key: "impressions", label: "Impressions" },
@@ -39,6 +39,10 @@ export const MODULES: ModuleDefinition[] = [
   { key: "costumes", label: "Costumes et accessoires" },
   { key: "calendrier", label: "Calendrier" },
   { key: "comite-combat", label: "Comité Combat" },
+  { key: "parametres-synchronisation", label: "Paramètres — Synchronisation" },
+  { key: "parametres-listes", label: "Paramètres — Listes réutilisables" },
+  { key: "parametres-communications", label: "Paramètres — Communications" },
+  { key: "parametres-benevolat", label: "Paramètres — Bénévolat" },
 ];
 
 function moduleByKey(key: string): ModuleDefinition {
@@ -107,6 +111,16 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
       { type: "leaf", module: moduleByKey("impressions") },
       { type: "leaf", module: moduleByKey("costumes") },
       { type: "leaf", module: moduleByKey("calendrier") },
+    ],
+  },
+  {
+    type: "group",
+    label: "Paramètres",
+    children: [
+      { type: "leaf", module: moduleByKey("parametres-synchronisation") },
+      { type: "leaf", module: moduleByKey("parametres-listes") },
+      { type: "leaf", module: moduleByKey("parametres-communications") },
+      { type: "leaf", module: moduleByKey("parametres-benevolat") },
     ],
   },
 ];

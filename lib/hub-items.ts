@@ -60,7 +60,7 @@ export const COMBAT_ITEMS: HubItem[] = [
   },
   {
     href: "/grande-bataille/2026/combat/volontaires",
-    label: "Gestion des volontaires",
+    label: "Volontaires",
     icon: Users,
     moduleKey: "benevoles",
   },
@@ -99,7 +99,7 @@ export const OUTILS_ITEMS: HubItem[] = [
   },
   {
     href: "/grande-bataille/2026/outils/volontaires",
-    label: "Gestion des volontaires",
+    label: "Volontaires",
     icon: Users,
     moduleKey: "volontaires-centralise",
   },
@@ -332,7 +332,7 @@ BREADCRUMB_LABELS["/grande-bataille/2026"] = "2026";
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/feuille-de-temps"] =
   "Feuille de temps";
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/volontaires"] =
-  "Gestion des volontaires";
+  "Volontaires";
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/bilan"] = "Bilan";
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/choses-a-faire"] =
   "Choses à faire";
@@ -364,7 +364,7 @@ BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/bestiaire"] =
   "Bestiaire";
 for (const c of EXTRA_COORDINATIONS) {
   BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/volontaires`] =
-    "Gestion des volontaires";
+    "Volontaires";
   BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/feuille-de-temps`] =
     "Feuille de temps";
   BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/bilan`] = "Bilan";

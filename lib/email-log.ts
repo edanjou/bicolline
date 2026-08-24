@@ -37,3 +37,11 @@ export async function listEmailLog(token: string | null): Promise<EmailLogRecord
   const data = await res.json();
   return data.entries ?? [];
 }
+
+export async function clearEmailLog(token: string | null): Promise<void> {
+  const res = await fetch("/api/admin/email-log", {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error("Impossible d'effacer le journal des courriels.");
+}

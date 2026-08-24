@@ -2,6 +2,10 @@ import { supabase } from "@/lib/supabase";
 
 export type WarningSeverity = "avertissement" | "expulsion";
 
+// Un avertissement reste valide 24 mois à partir de la date de l'activité
+// (ou, à défaut, de la date d'ajout) ; passé ce délai, il s'affiche en gris.
+export const WARNING_VALIDITY_MONTHS = 24;
+
 export type CombatWarning = {
   id: string;
   character_id: number;
@@ -51,6 +55,14 @@ function normalize(row: RawWarning): CombatWarning {
     activity_date: row.activity_date,
     created_at: row.created_at,
   };
+}
+
+export function isWarningExpired(warning: CombatWarning): boolean {
+  const reference = warning.activity_date ?? warning.created_at.slice(0, 10);
+  const expiresAt = new Date(reference);
+  if (Number.isNaN(expiresAt.getTime())) return false;
+  expiresAt.setMonth(expiresAt.getMonth() + WARNING_VALIDITY_MONTHS);
+  return expiresAt.getTime() <= Date.now();
 }
 
 export async function listWarnings(): Promise<CombatWarning[]> {
