@@ -107,13 +107,13 @@ function PeopleManager({
         </button>
       </form>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full min-w-[800px] table-fixed text-left text-sm">
           <colgroup>
             <col />
             <col className="w-20" />
           </colgroup>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Nom</th>
               <th className="py-2 pr-4 font-medium" />
@@ -269,13 +269,13 @@ function EventsManager({
         </button>
       </form>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full min-w-[800px] table-fixed text-left text-sm">
           <colgroup>
             <col />
             <col className="w-20" />
           </colgroup>
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Événement</th>
               <th className="py-2 pr-4 font-medium" />
@@ -666,7 +666,7 @@ export default function Timesheet({
           )}
 
           {!isLoading && !error && people.length > 0 && (
-            <div className="overflow-x-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <table
                 className="w-full table-fixed text-left text-sm"
                 style={{
@@ -682,7 +682,7 @@ export default function Timesheet({
                   ))}
                   {canWrite && <col className="w-12" />}
                 </colgroup>
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
                   <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                     <th className="py-2 pr-4 font-medium">Date</th>
                     <th className="py-2 pr-4 font-medium">Événement</th>

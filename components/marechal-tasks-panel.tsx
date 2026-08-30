@@ -326,7 +326,7 @@ export default function MarechalTasksPanel({
             items={rows.map((m) => m.id)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="overflow-x-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[800px] table-fixed border-collapse border border-black/[.15] text-left text-sm dark:border-white/[.15]">
                 <colgroup>
                   <col className="w-8" />
@@ -339,7 +339,7 @@ export default function MarechalTasksPanel({
                   ))}
                   <col className="w-32" />
                 </colgroup>
-                <thead>
+                <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
                   <tr className="bg-black/[.04] dark:bg-white/[.06]">
                     <th className="border border-black/[.15] px-2 py-3 dark:border-white/[.15]" />
                     <th className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]">

@@ -461,9 +461,9 @@ export default function PrintRequestsPanel({
       )}
 
       {requests.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
           <table className="w-full text-left text-xs">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
               <tr className="border-b border-black/[.08] dark:border-white/[.145]">
                 <th className="px-2 py-2 font-medium">Titre du fichier/document</th>
                 <th className="px-2 py-2 font-medium">Lien</th>

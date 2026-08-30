@@ -17,7 +17,6 @@ import {
 import { useEffect, useState } from "react";
 import { glofters } from "@/app/fonts/glofters";
 import Breadcrumb from "@/components/breadcrumb";
-import { Pagination, usePagination } from "@/components/pagination";
 import RequireFeature from "@/components/require-feature";
 import RichTextEditor from "@/components/rich-text-editor";
 import { listActivities, type ActivitySummary } from "@/lib/activities";
@@ -624,7 +623,6 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
         (m.guild_name ?? "").toLowerCase().includes(filterQuery),
     ),
   );
-  const { page, pageCount, setPage, pageItems } = usePagination(visible);
 
   return (
     <div className="flex flex-col gap-4">
@@ -654,9 +652,9 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
               {visible.length} / {marechaux.length} maréchaux
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[900px] text-left text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                   <SortHeader
                     label="Nom"
@@ -684,7 +682,7 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                 </tr>
               </thead>
               <tbody>
-                {pageItems.map((m) => (
+                {visible.map((m) => (
                   <tr key={m.id} className={rowClassName}>
                     <td className="py-2 pr-4 text-foreground">
                       <span className="flex items-center gap-1.5">
@@ -785,7 +783,6 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
               </p>
             )}
           </div>
-          <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
         </div>
       )}
 
@@ -880,7 +877,6 @@ function MedicsTab({ canWrite }: { canWrite: boolean }) {
         m.name.toLowerCase().includes(filterQuery),
     ),
   );
-  const { page, pageCount, setPage, pageItems } = usePagination(visible);
 
   return (
     <div className="flex flex-col gap-6">
@@ -911,9 +907,9 @@ function MedicsTab({ canWrite }: { canWrite: boolean }) {
                 {visible.length} / {medics.length} médics
               </span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[400px] text-left text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-background">
                   <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                     <SortHeader
                       label="Nom"
@@ -927,7 +923,7 @@ function MedicsTab({ canWrite }: { canWrite: boolean }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((m) => (
+                  {visible.map((m) => (
                     <tr key={m.id} className={rowClassName}>
                       <td className="py-2 pr-4 text-foreground">
                         {marechalDisplayName(m)}
@@ -976,11 +972,6 @@ function MedicsTab({ canWrite }: { canWrite: boolean }) {
                 </p>
               )}
             </div>
-            <Pagination
-              page={page}
-              pageCount={pageCount}
-              onPageChange={setPage}
-            />
           </div>
         )}
       </div>
@@ -1049,7 +1040,6 @@ function WeaponMastersTab({ canWrite }: { canWrite: boolean }) {
         w.name.toLowerCase().includes(filterQuery),
     ),
   );
-  const { page, pageCount, setPage, pageItems } = usePagination(visible);
 
   return (
     <div className="flex flex-col gap-6">
@@ -1080,9 +1070,9 @@ function WeaponMastersTab({ canWrite }: { canWrite: boolean }) {
                 {visible.length} / {weaponMasters.length} maîtres d&apos;armes
               </span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <table className="w-full min-w-[400px] text-left text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-background">
                   <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                     <SortHeader
                       label="Nom"
@@ -1095,7 +1085,7 @@ function WeaponMastersTab({ canWrite }: { canWrite: boolean }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {pageItems.map((w) => (
+                  {visible.map((w) => (
                     <tr key={w.id} className={rowClassName}>
                       <td className="py-2 pr-4 text-foreground">
                         {marechalDisplayName(w)}
@@ -1123,11 +1113,6 @@ function WeaponMastersTab({ canWrite }: { canWrite: boolean }) {
                 </p>
               )}
             </div>
-            <Pagination
-              page={page}
-              pageCount={pageCount}
-              onPageChange={setPage}
-            />
           </div>
         )}
       </div>

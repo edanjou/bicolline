@@ -243,7 +243,7 @@ export default function HomologationStaffSchedule() {
           Volontaires, département Homologation.
         </p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
           <table className="text-left text-sm">
             <thead>
               <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">

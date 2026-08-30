@@ -1046,7 +1046,7 @@ function StatsPanel({
   return (
     <div className="flex flex-col gap-3">
       <table className="w-full text-left text-sm">
-        <thead>
+        <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
           <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
             <th className="py-2 pr-4 font-medium">Département</th>
             <th className="py-2 pr-4 text-right font-medium">Volontaires</th>
@@ -1584,7 +1584,7 @@ export default function VolunteersPanel({
           </div>
         )}
 
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
           <table
             className="w-full table-fixed text-left text-sm"
             style={{ minWidth: `${180 + departments.length * 80 + 320}px` }}
@@ -1599,7 +1599,7 @@ export default function VolunteersPanel({
               <col className="w-20" />
               <col className="w-20" />
             </colgroup>
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
               <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                 <th className="py-2 pr-2 align-bottom font-medium">Nom</th>
                 {departments.map((d) => (
@@ -1846,7 +1846,7 @@ export default function VolunteersPanel({
             />
           )}
 
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table
               className="w-full table-fixed text-left text-sm"
               style={{
@@ -1861,7 +1861,7 @@ export default function VolunteersPanel({
                 <col className="w-16" />
                 <col className="w-16" />
               </colgroup>
-              <thead>
+              <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
                 <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                   <th className="sticky left-0 top-0 z-20 bg-white py-2 pr-2 align-bottom font-medium dark:bg-zinc-900">
                     Nom
@@ -1985,7 +1985,7 @@ export default function VolunteersPanel({
       )}
 
       {departmentTab === "absences" && (
-        <div className="overflow-x-auto">
+        <div className="max-h-[70vh] overflow-auto">
           <table
             className="w-full table-fixed text-left text-sm"
             style={{
@@ -1998,7 +1998,7 @@ export default function VolunteersPanel({
                 <col key={s.id} className="w-24" />
               ))}
             </colgroup>
-            <thead>
+            <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
               <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                 <th className="sticky left-0 top-0 z-20 bg-white py-2 pr-2 align-bottom font-medium dark:bg-zinc-900">
                   Nom

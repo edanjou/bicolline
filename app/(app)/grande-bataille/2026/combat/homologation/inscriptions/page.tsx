@@ -398,14 +398,14 @@ function SlotsModal({
           </p>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="max-h-[70vh] overflow-auto">
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}
               >
                 <table className="w-full min-w-[500px] text-left text-sm">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
                     <tr className="text-foreground/60">
                       <th className="px-3 py-2 font-medium" />
                       <th className="px-3 py-2 font-medium">Quartier</th>

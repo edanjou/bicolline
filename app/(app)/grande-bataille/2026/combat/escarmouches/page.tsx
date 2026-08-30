@@ -1033,9 +1033,9 @@ export default function EscarmouchesPage() {
               )}
 
               {visibleEscarmouches.length > 0 && (
-                <div className="overflow-x-auto">
+                <div className="max-h-[70vh] overflow-auto">
                   <table className="w-full min-w-[500px] text-left text-sm">
-                    <thead>
+                    <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
                       <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                         <th className="py-2 pr-4 font-medium">Nom</th>
                         <th className="py-2 pr-4 font-medium">

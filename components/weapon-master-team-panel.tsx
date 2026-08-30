@@ -50,6 +50,7 @@ export default function WeaponMasterTeamPanel({
   >({});
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [copiedRegistered, setCopiedRegistered] = useState(false);
 
   useEffect(() => {
     listWeaponMasterActivityStatuses(activity.id)
@@ -172,20 +173,53 @@ export default function WeaponMasterTeamPanel({
     }
   };
 
+  const registeredEmails = Array.from(
+    new Set(
+      weaponMasters
+        .filter((wm) => statuses[wm.id]?.is_registered && wm.player_email)
+        .map((wm) => wm.player_email as string),
+    ),
+  );
+
+  const handleCopyRegisteredEmails = async () => {
+    if (registeredEmails.length === 0) return;
+    try {
+      await navigator.clipboard.writeText(registeredEmails.join("; "));
+      setCopiedRegistered(true);
+      setTimeout(() => setCopiedRegistered(false), 1500);
+    } catch {
+      alert("Échec de la copie.");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2">
-      <button
-        type="button"
-        onClick={handleCopyAssignedEmails}
-        disabled={assignedEmails.length === 0}
-        title="Copier les courriels des maîtres d'armes assignés"
-        className="flex w-fit items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-white/[.08]"
-      >
-        <Copy size={14} />
-        {copied
-          ? "Copié !"
-          : `Copier les courriels des assignés (${assignedEmails.length})`}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={handleCopyAssignedEmails}
+          disabled={assignedEmails.length === 0}
+          title="Copier les courriels des maîtres d'armes assignés"
+          className="flex w-fit items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-white/[.08]"
+        >
+          <Copy size={14} />
+          {copied
+            ? "Copié !"
+            : `Copier les courriels des assignés (${assignedEmails.length})`}
+        </button>
+        <button
+          type="button"
+          onClick={handleCopyRegisteredEmails}
+          disabled={registeredEmails.length === 0}
+          title="Copier les courriels des maîtres d'armes inscrits"
+          className="flex w-fit items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-white/[.08]"
+        >
+          <Copy size={14} />
+          {copiedRegistered
+            ? "Copié !"
+            : `Copier les courriels des inscrits (${registeredEmails.length})`}
+        </button>
+      </div>
       {[...weaponMasters]
         .sort((a, b) =>
           marechalDisplayName(a).localeCompare(marechalDisplayName(b), "fr"),

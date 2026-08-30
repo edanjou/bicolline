@@ -436,9 +436,9 @@ export default function CentralizedVolunteersPanel({ year }: { year: number }) {
         vue.
       </p>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full text-left text-xs">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
             <tr className="border-b border-black/[.08] dark:border-white/[.145]">
               <SortHeader
                 label="Nom"

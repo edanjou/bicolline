@@ -668,9 +668,9 @@ export default function DocumentBrowser({
         )}
 
         {!isLoading && !error && (folders.length > 0 || files.length > 0) && (
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
                 <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                   <th className="py-2 pr-3 font-medium">
                     <button

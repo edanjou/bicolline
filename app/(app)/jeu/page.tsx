@@ -99,9 +99,9 @@ function GuildesTab({
           {visible.length} / {guilds.length} guildes
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full min-w-[600px] text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-background">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Nom</th>
               <th className="py-2 pr-4 font-medium">Membres</th>
@@ -167,9 +167,9 @@ function SceauxTab({ onGuildClick }: { onGuildClick: (name: string) => void }) {
           {visible.length} / {seals.length} sceaux
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full min-w-[600px] text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-background">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Guilde</th>
               <th className="py-2 pr-4 font-medium">Sceau</th>
@@ -307,9 +307,9 @@ function PersonnagesTab({
 
       {!isSearching && hasSearched && results.length > 0 && (
         <>
-          <div className="overflow-x-auto">
+          <div className="max-h-[70vh] overflow-auto">
             <table className="w-full min-w-[700px] text-left text-sm">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-background">
                 <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
                   <th className="py-2 pr-4 font-medium">Nom</th>
                   <th className="py-2 pr-4 font-medium">Guilde</th>
@@ -402,9 +402,9 @@ function CroyancesTab() {
           {visible.length} / {religions.length} croyances
         </span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full min-w-[400px] text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-background">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Nom</th>
               <th className="py-2 pr-4 font-medium">Fidèles</th>
@@ -559,9 +559,9 @@ function SabliersTab({
         </span>
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="max-h-[70vh] overflow-auto">
         <table className="w-full min-w-[700px] text-left text-sm">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-background">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Croyance</th>
               <th className="py-2 pr-4 font-medium">Titulaire</th>
