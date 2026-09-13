@@ -8,11 +8,15 @@ import {
   Cross,
   FileText,
   Flag,
+  Gift,
+  GraduationCap,
+  Plus,
   PocketKnife,
   Search,
   Star,
   Swords,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { glofters } from "@/app/fonts/glofters";
@@ -24,19 +28,23 @@ import { searchCharacters, type Character } from "@/lib/characters";
 import { getModuleAccessLevels } from "@/lib/features";
 import {
   addMarechal,
+  addMarechalGratuite,
   listActivityStatusesForMarechal,
-  listAssignedActivityCountByMarechal,
-  listAssignedActivityIdsByMarechal,
+  listCompletedActivityCountByMarechal,
+  listCompletedActivityIdsByMarechal,
+  listMarechalFormationYears,
+  listMarechalGratuites,
   listMarechaux,
   marechalDisplayName,
   removeMarechal,
+  removeMarechalGratuite,
   setMarechalActivityStatus,
-  setMarechalFormation,
-  setMarechalGratuiteActivity,
+  setMarechalFormationYear,
   toTitleCase,
   updateMarechal,
   type Marechal,
   type MarechalActivityStatus,
+  type MarechalGratuite,
 } from "@/lib/marechaux";
 import {
   addMedic,
@@ -96,10 +104,12 @@ const inputClassName =
 const rowClassName =
   "border-b border-black/[.06] odd:bg-black/[.015] dark:border-white/[.06] dark:odd:bg-white/[.03]";
 
-// Un maréchal bénévole sur 2 campagnes ou plus au cours de cette année a
-// droit à une gratuité (utilisable à la discrétion de l'admin).
-const GRATUITE_YEAR = 2026;
+// Un maréchal bénévole sur 2 campagnes ou plus au cours d'une même année a
+// droit à une gratuité cette année-là (utilisable à la discrétion de l'admin).
 const GRATUITE_THRESHOLD = 2;
+
+// Ajouter une année ici la rend disponible dans le bouton "Formations".
+const FORMATION_YEARS = [2025, 2026, 2027];
 
 function SearchInput({
   value,
@@ -171,7 +181,7 @@ function AddMarechalSearch({
         <p className="mt-1 text-xs text-foreground/40">Recherche…</p>
       )}
       {suggestions.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
+        <div className="absolute z-30 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
           {suggestions.map((c) => (
             <button
               key={c.external_id}
@@ -486,12 +496,293 @@ function MarechalAvailabilityModal({
   );
 }
 
+function MarechalFormationsModal({
+  marechal,
+  canWrite,
+  onClose,
+}: {
+  marechal: Marechal;
+  canWrite: boolean;
+  onClose: () => void;
+}) {
+  const [years, setYears] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listMarechalFormationYears(marechal.id)
+      .then(setYears)
+      .catch(() => setError("Impossible de charger les formations."))
+      .finally(() => setIsLoading(false));
+  }, [marechal.id]);
+
+  const handleToggle = async (year: number, checked: boolean) => {
+    if (!canWrite) return;
+    setYears((prev) =>
+      checked ? [...prev, year] : prev.filter((y) => y !== year),
+    );
+    try {
+      await setMarechalFormationYear(marechal.id, year, checked);
+    } catch {
+      alert("Échec de la mise à jour.");
+      setYears((prev) =>
+        checked ? prev.filter((y) => y !== year) : [...prev, year],
+      );
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white p-6 shadow-lg dark:bg-zinc-900"
+      >
+        <h2 className="font-semibold text-foreground">
+          Formations — {marechalDisplayName(marechal)}
+        </h2>
+        {isLoading && (
+          <p className="text-sm text-foreground/60">Chargement…</p>
+        )}
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+        {!isLoading && !error && (
+          <div className="flex flex-col gap-1">
+            {FORMATION_YEARS.map((year) => (
+              <label
+                key={year}
+                className="flex items-center gap-2 rounded px-1 py-1.5 text-sm text-foreground hover:bg-black/[.03] dark:hover:bg-white/[.05]"
+              >
+                <input
+                  type="checkbox"
+                  disabled={!canWrite}
+                  checked={years.includes(year)}
+                  onChange={(e) => handleToggle(year, e.target.checked)}
+                  className="h-4 w-4 accent-primary disabled:cursor-not-allowed"
+                />
+                Formation {year}
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="mt-1 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MarechalGratuitesModal({
+  marechal,
+  activities,
+  completedActivityIds,
+  canWrite,
+  onClose,
+}: {
+  marechal: Marechal;
+  activities: ActivitySummary[];
+  completedActivityIds: string[];
+  canWrite: boolean;
+  onClose: () => void;
+}) {
+  const [gratuites, setGratuites] = useState<MarechalGratuite[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<number, string>>({});
+
+  useEffect(() => {
+    listMarechalGratuites(marechal.id)
+      .then(setGratuites)
+      .catch(() => setError("Impossible de charger les gratuités."))
+      .finally(() => setIsLoading(false));
+  }, [marechal.id]);
+
+  const years = Array.from(
+    new Set(activities.map((a) => Number(a.date.slice(0, 4)))),
+  ).sort((a, b) => a - b);
+
+  const activityNames = Array.from(new Set(activities.map((a) => a.name)));
+
+  const handleAdd = async (year: number) => {
+    if (!canWrite) return;
+    const label = (drafts[year] ?? "").trim();
+    if (!label) return;
+    try {
+      const created = await addMarechalGratuite(marechal.id, year, label);
+      setGratuites((prev) => [...prev, created]);
+      setDrafts((prev) => ({ ...prev, [year]: "" }));
+    } catch {
+      alert("Échec de l'ajout.");
+    }
+  };
+
+  const handleRemove = async (gratuite: MarechalGratuite) => {
+    if (!canWrite) return;
+    setGratuites((prev) => prev.filter((g) => g.id !== gratuite.id));
+    try {
+      await removeMarechalGratuite(gratuite.id);
+    } catch {
+      alert("Échec du retrait.");
+      setGratuites((prev) => [...prev, gratuite]);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="flex w-full max-w-lg flex-col gap-3 rounded-2xl bg-white p-6 shadow-lg dark:bg-zinc-900"
+      >
+        <h2 className="font-semibold text-foreground">
+          Gratuités — {marechalDisplayName(marechal)}
+        </h2>
+        <p className="text-xs text-foreground/60">
+          1 gratuité par tranche de {GRATUITE_THRESHOLD} campagnes faites
+          dans l&apos;année. Une gratuité peut être prise sur n&apos;importe
+          quelle activité, même une année suivante (ducasse, soirée
+          thématique, campagne…).
+        </p>
+        <datalist id="gratuite-activity-suggestions">
+          {activityNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+        {isLoading && (
+          <p className="text-sm text-foreground/60">Chargement…</p>
+        )}
+        {error && (
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        )}
+        {!isLoading && !error && (
+          <div className="flex max-h-[60vh] flex-col gap-3 overflow-y-auto">
+            {years.map((year) => {
+              const activitiesThisYear = activities.filter((a) =>
+                a.date.startsWith(String(year)),
+              );
+              const doneThisYear = completedActivityIds.filter((id) =>
+                activitiesThisYear.some((a) => a.id === id),
+              ).length;
+              const earned = marechal.is_campaign_team
+                ? 0
+                : Math.floor(doneThisYear / GRATUITE_THRESHOLD);
+              const usedThisYear = gratuites.filter(
+                (g) => g.earned_year === year,
+              );
+              const remaining = earned - usedThisYear.length;
+              return (
+                <div
+                  key={year}
+                  className="flex flex-col gap-2 rounded-lg border border-black/[.08] px-3 py-2 dark:border-white/[.145]"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <BooleanDot value={earned > 0} />
+                      <span className="text-sm text-foreground">
+                        {year} — {doneThisYear} campagne
+                        {doneThisYear > 1 ? "s" : ""} → {earned} gratuité
+                        {earned > 1 ? "s" : ""}
+                      </span>
+                    </div>
+                    <span className="text-xs text-foreground/60">
+                      {usedThisYear.length} prise
+                      {usedThisYear.length > 1 ? "s" : ""}
+                      {remaining > 0 ? ` · ${remaining} restante${remaining > 1 ? "s" : ""}` : ""}
+                    </span>
+                  </div>
+                  {usedThisYear.length > 0 && (
+                    <ul className="flex flex-col gap-1">
+                      {usedThisYear.map((g) => (
+                        <li
+                          key={g.id}
+                          className="flex items-center justify-between gap-2 rounded bg-black/[.03] px-2 py-1 text-xs text-foreground dark:bg-white/[.05]"
+                        >
+                          {g.label}
+                          {canWrite && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemove(g)}
+                              aria-label="Retirer"
+                              className="text-foreground/50 hover:text-foreground"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {canWrite && remaining > 0 && (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        list="gratuite-activity-suggestions"
+                        value={drafts[year] ?? ""}
+                        onChange={(e) =>
+                          setDrafts((prev) => ({
+                            ...prev,
+                            [year]: e.target.value,
+                          }))
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleAdd(year);
+                        }}
+                        placeholder="Activité, ducasse, soirée…"
+                        className="flex-1 rounded border border-black/[.08] bg-white px-2 py-1 text-xs text-foreground dark:border-white/[.145] dark:bg-zinc-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAdd(year)}
+                        disabled={!(drafts[year] ?? "").trim()}
+                        className="flex items-center gap-1 rounded-full border border-black/[.08] px-2 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-white/[.08]"
+                      >
+                        <Plus size={12} />
+                        Ajouter
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {years.length === 0 && (
+              <p className="text-sm text-foreground/60">
+                Aucune campagne pour l&apos;instant.
+              </p>
+            )}
+          </div>
+        )}
+        <div className="mt-1 flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MarechauxTab({ canWrite }: { canWrite: boolean }) {
   const [marechaux, setMarechaux] = useState<Marechal[]>([]);
   const [campaignCounts, setCampaignCounts] = useState<Record<string, number>>(
     {},
   );
-  const [assignedActivityIds, setAssignedActivityIds] = useState<
+  const [completedActivityIds, setCompletedActivityIds] = useState<
     Record<string, string[]>
   >({});
   const [activities, setActivities] = useState<ActivitySummary[]>([]);
@@ -502,21 +793,25 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
   );
   const [availabilityMarechal, setAvailabilityMarechal] =
     useState<Marechal | null>(null);
+  const [formationsMarechal, setFormationsMarechal] =
+    useState<Marechal | null>(null);
+  const [gratuitesMarechal, setGratuitesMarechal] =
+    useState<Marechal | null>(null);
   const [query, setQuery] = useState("");
 
   const fetchAll = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [list, counts, assignedIds, activityList] = await Promise.all([
+      const [list, counts, completedIds, activityList] = await Promise.all([
         listMarechaux(),
-        listAssignedActivityCountByMarechal(),
-        listAssignedActivityIdsByMarechal(),
+        listCompletedActivityCountByMarechal(),
+        listCompletedActivityIdsByMarechal(),
         listActivities(),
       ]);
       setMarechaux(list);
       setCampaignCounts(counts);
-      setAssignedActivityIds(assignedIds);
+      setCompletedActivityIds(completedIds);
       setActivities(activityList);
     } catch {
       setError("Impossible de charger les maréchaux.");
@@ -551,64 +846,6 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
       alert("Échec du retrait.");
     }
   };
-
-  const handleToggleFormation = async (
-    marechal: Marechal,
-    field: "formation_2025" | "formation_2026",
-  ) => {
-    if (!canWrite) return;
-    const nextValue = !marechal[field];
-    setMarechaux((prev) =>
-      prev.map((m) => (m.id === marechal.id ? { ...m, [field]: nextValue } : m)),
-    );
-    try {
-      await setMarechalFormation(marechal.id, field, nextValue);
-    } catch {
-      alert("Échec de la mise à jour.");
-      setMarechaux((prev) =>
-        prev.map((m) =>
-          m.id === marechal.id ? { ...m, [field]: !nextValue } : m,
-        ),
-      );
-    }
-  };
-
-  const handleGratuiteChange = async (
-    marechal: Marechal,
-    activityId: string | null,
-  ) => {
-    if (!canWrite) return;
-    setMarechaux((prev) =>
-      prev.map((m) =>
-        m.id === marechal.id
-          ? { ...m, gratuite_2026_activity_id: activityId }
-          : m,
-      ),
-    );
-    try {
-      await setMarechalGratuiteActivity(marechal.id, activityId);
-    } catch {
-      alert("Échec de la mise à jour.");
-      setMarechaux((prev) =>
-        prev.map((m) =>
-          m.id === marechal.id
-            ? { ...m, gratuite_2026_activity_id: marechal.gratuite_2026_activity_id }
-            : m,
-        ),
-      );
-    }
-  };
-
-  const activitiesThisYear = new Set(
-    activities
-      .filter((a) => a.date.startsWith(String(GRATUITE_YEAR)))
-      .map((a) => a.id),
-  );
-  const gratuiteEligible = (marechal: Marechal) =>
-    !marechal.is_campaign_team &&
-    (assignedActivityIds[marechal.id] ?? []).filter((id) =>
-      activitiesThisYear.has(id),
-    ).length >= GRATUITE_THRESHOLD;
 
   const { sortField, sortDir, handleSort, sortItems } = useNameDateSort(
     marechaux,
@@ -664,19 +901,7 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                     onSort={handleSort}
                   />
                   <th className="py-2 pr-4 text-center font-medium">
-                    Formation 2025
-                  </th>
-                  <th className="py-2 pr-4 text-center font-medium">
-                    Formation 2026
-                  </th>
-                  <th className="py-2 pr-4 text-center font-medium">
                     Campagnes
-                  </th>
-                  <th className="py-2 pr-4 text-center font-medium">
-                    Gratuité {GRATUITE_YEAR}
-                  </th>
-                  <th className="py-2 pr-4 text-center font-medium">
-                    Gratuité prise
                   </th>
                   <th className="py-2 pr-4 text-right font-medium">Actions</th>
                 </tr>
@@ -697,54 +922,7 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                       </span>
                     </td>
                     <td className="py-2 pr-4 text-center text-foreground/80">
-                      <BooleanDot
-                        value={m.formation_2025}
-                        onToggle={
-                          canWrite
-                            ? () => handleToggleFormation(m, "formation_2025")
-                            : undefined
-                        }
-                      />
-                    </td>
-                    <td className="py-2 pr-4 text-center text-foreground/80">
-                      <BooleanDot
-                        value={m.formation_2026}
-                        onToggle={
-                          canWrite
-                            ? () => handleToggleFormation(m, "formation_2026")
-                            : undefined
-                        }
-                      />
-                    </td>
-                    <td className="py-2 pr-4 text-center text-foreground/80">
                       {campaignCounts[m.id] ?? 0}
-                    </td>
-                    <td className="py-2 pr-4 text-center text-foreground/80">
-                      <BooleanDot value={gratuiteEligible(m)} />
-                    </td>
-                    <td className="py-2 pr-4 text-center text-foreground/80">
-                      <select
-                        value={m.gratuite_2026_activity_id ?? ""}
-                        onChange={(e) =>
-                          handleGratuiteChange(m, e.target.value || null)
-                        }
-                        disabled={!canWrite || !gratuiteEligible(m)}
-                        title={
-                          gratuiteEligible(m)
-                            ? undefined
-                            : m.is_campaign_team
-                              ? "Non valable pour l'équipe campagne"
-                              : "Pas encore droit à la gratuité"
-                        }
-                        className="rounded border border-black/[.08] bg-white px-2 py-1 text-xs text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
-                      >
-                        <option value="">— Non prise —</option>
-                        {activities.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name}
-                          </option>
-                        ))}
-                      </select>
                     </td>
                     <td className="py-2 pr-4">
                       {canWrite && (
@@ -755,6 +933,20 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
                           >
                             <CalendarCheck size={14} />
                             Disponibilités
+                          </button>
+                          <button
+                            onClick={() => setFormationsMarechal(m)}
+                            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                          >
+                            <GraduationCap size={14} />
+                            Formations
+                          </button>
+                          <button
+                            onClick={() => setGratuitesMarechal(m)}
+                            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-foreground/60 transition-colors hover:bg-black/[.05] dark:hover:bg-white/[.08]"
+                          >
+                            <Gift size={14} />
+                            Gratuités
                           </button>
                           <button
                             onClick={() => setEditingMarechal(m)}
@@ -800,6 +992,26 @@ function MarechauxTab({ canWrite }: { canWrite: boolean }) {
           activities={activities}
           canWrite={canWrite}
           onClose={() => setAvailabilityMarechal(null)}
+        />
+      )}
+
+      {formationsMarechal && (
+        <MarechalFormationsModal
+          marechal={formationsMarechal}
+          canWrite={canWrite}
+          onClose={() => setFormationsMarechal(null)}
+        />
+      )}
+
+      {gratuitesMarechal && (
+        <MarechalGratuitesModal
+          marechal={gratuitesMarechal}
+          activities={activities}
+          completedActivityIds={
+            completedActivityIds[gratuitesMarechal.id] ?? []
+          }
+          canWrite={canWrite}
+          onClose={() => setGratuitesMarechal(null)}
         />
       )}
     </div>

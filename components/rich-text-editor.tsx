@@ -2,15 +2,23 @@
 
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import { Table } from "@tiptap/extension-table";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableRow } from "@tiptap/extension-table-row";
 import { useEffect, useState } from "react";
 import {
   Bold,
+  Columns3,
   Italic,
   List,
   ListOrdered,
   Quote,
+  Rows3,
   Sparkles,
   Strikethrough,
+  Table as TableIcon,
+  Trash2,
   Underline as UnderlineIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -141,6 +149,46 @@ function Toolbar({ editor }: { editor: Editor }) {
         <Quote size={16} />
       </ToolbarButton>
       <div className="mx-1 h-4 w-px bg-black/[.08] dark:bg-white/[.145]" />
+      {editor.isActive("table") ? (
+        <>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+            active={false}
+            label="Ajouter une ligne"
+          >
+            <Rows3 size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+            active={false}
+            label="Ajouter une colonne"
+          >
+            <Columns3 size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().deleteTable().run()}
+            active={false}
+            label="Supprimer le tableau"
+          >
+            <Trash2 size={16} />
+          </ToolbarButton>
+        </>
+      ) : (
+        <ToolbarButton
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+              .run()
+          }
+          active={false}
+          label="Insérer un tableau"
+        >
+          <TableIcon size={16} />
+        </ToolbarButton>
+      )}
+      <div className="mx-1 h-4 w-px bg-black/[.08] dark:bg-white/[.145]" />
       <ToolbarButton
         onClick={handleRewrite}
         active={false}
@@ -172,7 +220,13 @@ export default function RichTextEditor({
 }) {
   const editor = useEditor({
     immediatelyRender: false,
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
     content: value,
     editable: !readOnly,
     editorProps: {

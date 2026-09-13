@@ -3,8 +3,6 @@ import { supabase } from "@/lib/supabase";
 export type Marechal = {
   id: string;
   character_id: number;
-  formation_2025: boolean;
-  formation_2026: boolean;
   is_campaign_team: boolean;
   notes: string | null;
   created_at: string;
@@ -12,7 +10,6 @@ export type Marechal = {
   player_name: string | null;
   player_email: string | null;
   guild_name: string | null;
-  gratuite_2026_activity_id: string | null;
 };
 
 type RawCharacterJoin = {
@@ -25,12 +22,9 @@ type RawCharacterJoin = {
 type RawMarechal = {
   id: string;
   character_id: number;
-  formation_2025: boolean;
-  formation_2026: boolean;
   is_campaign_team: boolean;
   notes: string | null;
   created_at: string;
-  gratuite_2026_activity_id: string | null;
   characters: RawCharacterJoin | RawCharacterJoin[];
 };
 
@@ -46,8 +40,6 @@ function normalizeMarechal(row: RawMarechal): Marechal {
   return {
     id: row.id,
     character_id: row.character_id,
-    formation_2025: row.formation_2025,
-    formation_2026: row.formation_2026,
     is_campaign_team: row.is_campaign_team,
     notes: row.notes,
     created_at: row.created_at,
@@ -55,12 +47,11 @@ function normalizeMarechal(row: RawMarechal): Marechal {
     player_name: character?.player_name ?? null,
     player_email: character?.player_email ?? null,
     guild_name: guild?.name ?? null,
-    gratuite_2026_activity_id: row.gratuite_2026_activity_id,
   };
 }
 
 const MARECHAL_SELECT =
-  "id, character_id, formation_2025, formation_2026, is_campaign_team, notes, created_at, gratuite_2026_activity_id, characters(name, player_name, player_email, guilds(name))";
+  "id, character_id, is_campaign_team, notes, created_at, characters(name, player_name, player_email, guilds(name))";
 
 export function toTitleCase(value: string): string {
   return value
@@ -114,16 +105,38 @@ export async function updateMarechal(
   if (error) throw error;
 }
 
-export async function setMarechalFormation(
-  id: string,
-  field: "formation_2025" | "formation_2026",
-  value: boolean,
-): Promise<void> {
-  const { error } = await supabase
-    .from("marechaux")
-    .update({ [field]: value })
-    .eq("id", id);
+export async function listMarechalFormationYears(
+  marechalId: string,
+): Promise<number[]> {
+  const { data, error } = await supabase
+    .from("marechal_formations")
+    .select("year")
+    .eq("marechal_id", marechalId);
   if (error) throw error;
+  return (data ?? []).map((row) => row.year);
+}
+
+export async function setMarechalFormationYear(
+  marechalId: string,
+  year: number,
+  completed: boolean,
+): Promise<void> {
+  if (completed) {
+    const { error } = await supabase
+      .from("marechal_formations")
+      .upsert(
+        { marechal_id: marechalId, year },
+        { onConflict: "marechal_id,year" },
+      );
+    if (error) throw error;
+  } else {
+    const { error } = await supabase
+      .from("marechal_formations")
+      .delete()
+      .eq("marechal_id", marechalId)
+      .eq("year", year);
+    if (error) throw error;
+  }
 }
 
 export async function removeMarechal(id: string): Promise<void> {
@@ -273,13 +286,16 @@ export async function listActivityStatusCounts(): Promise<
   return counts;
 }
 
-export async function listAssignedActivityCountByMarechal(): Promise<
+// "Faite" = assignée ET inscrite (présente), pas juste assignée : sert au
+// compteur de campagnes et au calcul des gratuités.
+export async function listCompletedActivityCountByMarechal(): Promise<
   Record<string, number>
 > {
   const { data, error } = await supabase
     .from("marechal_activity_status")
     .select("marechal_id")
-    .eq("is_assigned", true);
+    .eq("is_assigned", true)
+    .eq("is_registered", true);
   if (error) throw error;
   const counts: Record<string, number> = {};
   (data ?? []).forEach((row) => {
@@ -288,13 +304,14 @@ export async function listAssignedActivityCountByMarechal(): Promise<
   return counts;
 }
 
-export async function listAssignedActivityIdsByMarechal(): Promise<
+export async function listCompletedActivityIdsByMarechal(): Promise<
   Record<string, string[]>
 > {
   const { data, error } = await supabase
     .from("marechal_activity_status")
     .select("marechal_id, activity_id")
-    .eq("is_assigned", true);
+    .eq("is_assigned", true)
+    .eq("is_registered", true);
   if (error) throw error;
   const map: Record<string, string[]> = {};
   (data ?? []).forEach((row) => {
@@ -303,13 +320,44 @@ export async function listAssignedActivityIdsByMarechal(): Promise<
   return map;
 }
 
-export async function setMarechalGratuiteActivity(
-  id: string,
-  activityId: string | null,
-): Promise<void> {
+export type MarechalGratuite = {
+  id: string;
+  marechal_id: string;
+  earned_year: number;
+  label: string;
+  created_at: string;
+};
+
+export async function listMarechalGratuites(
+  marechalId: string,
+): Promise<MarechalGratuite[]> {
+  const { data, error } = await supabase
+    .from("marechal_gratuites")
+    .select("id, marechal_id, earned_year, label, created_at")
+    .eq("marechal_id", marechalId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function addMarechalGratuite(
+  marechalId: string,
+  earnedYear: number,
+  label: string,
+): Promise<MarechalGratuite> {
+  const { data, error } = await supabase
+    .from("marechal_gratuites")
+    .insert({ marechal_id: marechalId, earned_year: earnedYear, label })
+    .select("id, marechal_id, earned_year, label, created_at")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function removeMarechalGratuite(id: string): Promise<void> {
   const { error } = await supabase
-    .from("marechaux")
-    .update({ gratuite_2026_activity_id: activityId })
+    .from("marechal_gratuites")
+    .delete()
     .eq("id", id);
   if (error) throw error;
 }

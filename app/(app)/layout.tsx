@@ -23,6 +23,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, ViewTransition } from "react";
 import { isItemAllowed, type HubItem } from "@/components/module-hub";
+import { UnsavedChangesProvider } from "@/components/unsaved-changes-provider";
 import {
   getModuleAccessLevels,
   type ModuleAccessLevel,
@@ -264,6 +265,7 @@ export default function DashboardLayout({
   }
 
   return (
+    <UnsavedChangesProvider>
     <div className="flex flex-1 flex-col gap-4 bg-background p-4">
       <div className="fixed top-4 right-16 z-50 flex items-center gap-2">
         {topBarItems.map((item) => {
@@ -360,5 +362,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </UnsavedChangesProvider>
   );
 }

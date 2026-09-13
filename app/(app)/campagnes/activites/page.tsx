@@ -534,7 +534,7 @@ function FrontCard({
             className="w-full rounded border border-black/[.08] bg-white px-3 py-1.5 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
           />
           {guildSuggestions.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
+            <div className="absolute z-30 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
               {guildSuggestions.map((g) => (
                 <button
                   key={g.external_id}
@@ -599,7 +599,7 @@ function FrontCard({
                 <p className="mt-1 text-xs text-foreground/40">Recherche…</p>
               )}
               {organizerSuggestions.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
+                <div className="absolute z-30 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
                   {organizerSuggestions.map((c) => (
                     <button
                       key={c.external_id}
@@ -2740,7 +2740,7 @@ function ActivityDocumentModal({
       >
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-foreground">
-            Document — {activity.name}
+            Document jeu — {activity.name}
           </h2>
           <button
             type="button"
@@ -4164,21 +4164,21 @@ function ActivitesContent() {
                                 className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
                               >
                                 <FileText size={14} />
-                                Document
+                                Document jeu
                               </button>
                               <button
                                 onClick={() => setMontageActivity(activity)}
-                                className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
+                                className="flex items-center gap-1.5 rounded-full bg-yellow-100 px-3 py-1.5 text-xs font-medium text-yellow-800 transition-colors hover:bg-yellow-200 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-950"
                               >
                                 <Hammer size={14} />
-                                Montage terrain
+                                Montage
                               </button>
                               <button
                                 onClick={() => setDemontageActivity(activity)}
-                                className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
+                                className="flex items-center gap-1.5 rounded-full bg-yellow-100 px-3 py-1.5 text-xs font-medium text-yellow-800 transition-colors hover:bg-yellow-200 dark:bg-yellow-950/60 dark:text-yellow-400 dark:hover:bg-yellow-950"
                               >
                                 <PackageMinus size={14} />
-                                Plan de démontage
+                                Démontage
                               </button>
                               <button
                                 onClick={() =>
@@ -4578,7 +4578,7 @@ function ActivitesContent() {
         <SimpleDocumentModal
           activity={montageActivity}
           documentType="montage"
-          title="Montage terrain"
+          title="Montage"
           canWrite={hasFullAccess}
           onClose={() => setMontageActivity(null)}
         />
@@ -4587,7 +4587,7 @@ function ActivitesContent() {
         <SimpleDocumentModal
           activity={demontageActivity}
           documentType="demontage"
-          title="Plan de démontage"
+          title="Démontage"
           canWrite={hasFullAccess}
           onClose={() => setDemontageActivity(null)}
         />

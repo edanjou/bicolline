@@ -149,6 +149,7 @@ export type MapEditorData = {
   lines: DrawnLine[];
   mapShapes: MapShape[];
   textShapes: TextShape[];
+  showGrid?: boolean;
 };
 
 type DragOrigin = {
@@ -160,6 +161,12 @@ const CANVAS_PRESETS: { label: string; width: number; height: number }[] = [
   { label: "3:2 (1200 × 800)", width: 1200, height: 800 },
   { label: "1:1 (1000 × 1000)", width: 1000, height: 1000 },
 ];
+
+// Nombre de colonnes/rangées du quadrillage selon le format de la carte.
+const GRID_LAYOUT_BY_CANVAS_SIZE: Record<string, { cols: number; rows: number }> = {
+  "1200x800": { cols: 16, rows: 10 },
+  "1000x1000": { cols: 10, rows: 10 },
+};
 
 const DRAW_COLOR_SWATCHES = [
   "#1c1c1c",
@@ -182,10 +189,25 @@ const WATERMARK_MAX_WIDTH = 72;
 const WATERMARK_NATURAL_WIDTH = 233.744;
 const WATERMARK_NATURAL_HEIGHT = 267.476;
 const DEFAULT_BACKGROUND_URL =
-  "https://cfduycvxggikaxjilbkf.supabase.co/storage/v1/object/public/media/37e4ab42-762e-4453-9542-7d5204beb886.jpg";
+  "https://cfduycvxggikaxjilbkf.supabase.co/storage/v1/object/public/media/Bico-juillet2026-Full.jpg";
 
 function getDashPattern(style: DrawStyle, width: number): number[] {
   return style === "dashed" ? [width * 3, width * 2] : [];
+}
+
+// Repli si le format de la carte ne correspond à aucune entrée de
+// GRID_LAYOUT_BY_CANVAS_SIZE (grille non liée au zoom, comme le filigrane).
+const FALLBACK_GRID_CELL_SIZE = 60;
+
+// A, B, ... Z, AA, AB, ... (comme les en-têtes de colonnes d'un tableur).
+function indexToLetters(index: number): string {
+  let n = index;
+  let label = "";
+  do {
+    label = String.fromCharCode(65 + (n % 26)) + label;
+    n = Math.floor(n / 26) - 1;
+  } while (n >= 0);
+  return label;
 }
 
 function hexToRgba(hex: string, alpha: number): string {
@@ -671,6 +693,107 @@ function MapWatermark({
       height={height}
       listening={false}
     />
+  );
+}
+
+function MapGridOverlay({
+  cols,
+  rows,
+  displayWidth,
+  displayHeight,
+}: {
+  cols: number;
+  rows: number;
+  displayWidth: number;
+  displayHeight: number;
+}) {
+  // +1 pour la bande d'en-tête (non numérotée/lettrée), qui ne compte pas
+  // dans les cols/rows demandées.
+  const totalCols = cols + 1;
+  const totalRows = rows + 1;
+  const cellWidth = displayWidth / totalCols;
+  const cellHeight = displayHeight / totalRows;
+  const fontSize = 22;
+
+  const verticalLines = Array.from({ length: totalCols + 1 }, (_, c) => {
+    const x = Math.min(c * cellWidth, displayWidth);
+    return (
+      <Line
+        key={`grid-v-${c}`}
+        points={[x, 0, x, displayHeight]}
+        stroke="rgba(255,255,255,0.6)"
+        strokeWidth={2}
+        listening={false}
+      />
+    );
+  });
+
+  const horizontalLines = Array.from({ length: totalRows + 1 }, (_, r) => {
+    const y = Math.min(r * cellHeight, displayHeight);
+    return (
+      <Line
+        key={`grid-h-${r}`}
+        points={[0, y, displayWidth, y]}
+        stroke="rgba(255,255,255,0.6)"
+        strokeWidth={2}
+        listening={false}
+      />
+    );
+  });
+
+  const columnLabels = Array.from({ length: cols }, (_, i) => {
+    const c = i + 1;
+    return (
+      <Text
+        key={`grid-col-${c}`}
+        x={c * cellWidth}
+        y={0}
+        width={cellWidth}
+        height={cellHeight}
+        text={String(c)}
+        fontSize={fontSize}
+        fontFamily={NUGROS_FONT_FAMILY}
+        fontStyle="bold"
+        fill="rgba(255,255,255,0.8)"
+        stroke="rgba(255,255,255,0.8)"
+        strokeWidth={0.75}
+        align="center"
+        verticalAlign="middle"
+        listening={false}
+      />
+    );
+  });
+
+  const rowLabels = Array.from({ length: rows }, (_, i) => {
+    const r = i + 1;
+    return (
+      <Text
+        key={`grid-row-${r}`}
+        x={0}
+        y={r * cellHeight}
+        width={cellWidth}
+        height={cellHeight}
+        text={indexToLetters(i)}
+        fontSize={fontSize}
+        fontFamily={NUGROS_FONT_FAMILY}
+        fontStyle="bold"
+        fill="rgba(255,255,255,0.8)"
+        stroke="rgba(255,255,255,0.8)"
+        strokeWidth={0.75}
+        align="center"
+        verticalAlign="middle"
+        listening={false}
+      />
+    );
+  });
+
+  return (
+    <>
+      {verticalLines}
+      {horizontalLines}
+      {columnLabels}
+      {rowLabels}
+    </>
   );
 }
 
@@ -1245,6 +1368,7 @@ export default function MapEditor({
     width: 1200,
     height: 800,
   });
+  const [showGrid, setShowGrid] = useState(false);
   const [libraryEntries, setLibraryEntries] = useState<MediaEntry[]>([]);
   const [libraryPath, setLibraryPath] = useState(DEFAULT_LIBRARY_FOLDER);
   const [selectedMediaPaths, setSelectedMediaPaths] = useState<string[]>([]);
@@ -1421,6 +1545,12 @@ export default function MapEditor({
   const totalStageScale = baseFitScale * zoomMultiplier;
   const stagePosX = (displayWidth - canvasSize.width * totalStageScale) / 2;
   const stagePosY = (displayHeight - canvasSize.height * totalStageScale) / 2;
+  const gridLayout = GRID_LAYOUT_BY_CANVAS_SIZE[
+    `${canvasSize.width}x${canvasSize.height}`
+  ] ?? {
+    cols: Math.max(1, Math.round(displayWidth / FALLBACK_GRID_CELL_SIZE)),
+    rows: Math.max(1, Math.round(displayHeight / FALLBACK_GRID_CELL_SIZE)),
+  };
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -2445,12 +2575,14 @@ export default function MapEditor({
       lines,
       mapShapes,
       textShapes,
+      showGrid,
     };
   };
 
   const loadProjectData = (data: MapEditorData) => {
     setBackgroundSrc(data.backgroundSrc);
     setCanvasSize(data.canvasSize);
+    setShowGrid(data.showGrid ?? false);
     setOverlays((data.overlays ?? []).map((o) => ({ ...o, groupId: o.groupId ?? null })));
     setLines((data.lines ?? []).map((l) => ({ ...l, groupId: l.groupId ?? null })));
     setMapShapes((data.mapShapes ?? []).map((s) => ({ ...s, groupId: s.groupId ?? null })));
@@ -2468,6 +2600,7 @@ export default function MapEditor({
     if (!canWrite) return;
     setBackgroundSrc(DEFAULT_BACKGROUND_URL);
     setCanvasSize({ width: 1200, height: 800 });
+    setShowGrid(false);
     setOverlays([]);
     setLines([]);
     setMapShapes([]);
@@ -2704,6 +2837,18 @@ export default function MapEditor({
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={showGrid}
+              onChange={(e) => setShowGrid(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Quadrillage
+          </label>
         </div>
 
         <div className="flex flex-nowrap items-center gap-2">
@@ -3287,6 +3432,14 @@ export default function MapEditor({
                 x={-stagePosX / totalStageScale}
                 y={-stagePosY / totalStageScale}
               >
+                {showGrid && (
+                  <MapGridOverlay
+                    cols={gridLayout.cols}
+                    rows={gridLayout.rows}
+                    displayWidth={displayWidth}
+                    displayHeight={displayHeight}
+                  />
+                )}
                 <MapWatermark
                   displayWidth={displayWidth}
                   displayHeight={displayHeight}

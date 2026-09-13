@@ -1,8 +1,10 @@
 "use client";
 
-import { Axe, BadgeCheck, Shield, Users } from "lucide-react";
+import { Axe, BadgeCheck, FileDown, Shield, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import RichTextEditor from "@/components/rich-text-editor";
+import { useUnsavedChangesGuard } from "@/components/unsaved-changes-provider";
+import { downloadBlob, exportBilanToDocx } from "@/lib/bilan-docx-export";
 import {
   getOrCreateBilan,
   updateBilan,
@@ -20,6 +22,7 @@ import {
   listHomologationSchedules,
   type HomologationSchedule,
 } from "@/lib/homologation";
+import { allCoordinationLabel } from "@/lib/hub-items";
 import { getOwnProfile } from "@/lib/profile";
 import {
   listAssignmentsForVolunteers,
@@ -161,6 +164,8 @@ export default function BilanPanel({
 
   const [form, setForm] = useState<BilanSectionsInput>(emptySections());
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
 
   useEffect(() => {
     getOwnProfile().then((profile) => {
@@ -212,6 +217,7 @@ export default function BilanPanel({
       setVolunteers(volunteerList);
       setSlots(slotList);
       setAssignments(assignmentList);
+      setIsDirty(false);
     } catch {
       setError("Impossible de charger le bilan.");
     } finally {
@@ -238,6 +244,8 @@ export default function BilanPanel({
     }
   };
 
+  useUnsavedChangesGuard(isDirty, handleSave);
+
   if (isLoading) {
     return <p className="text-sm text-foreground/60">Chargement…</p>;
   }
@@ -262,22 +270,66 @@ export default function BilanPanel({
     return sum + (slot?.hours ?? 0);
   }, 0);
 
+  const handleExportDocx = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportBilanToDocx({
+        title: `Bilan ${year} — ${allCoordinationLabel(coordinationKey)}`,
+        stats: [
+          { label: "Escarmouches", value: String(escarmouchesCount) },
+          { label: "Homologations", value: String(homologationCount) },
+          { label: "Grandes Batailles", value: String(grandesBataillesCount) },
+          {
+            label: `Volontaires — ${volontairesHeures} h`,
+            value: String(volunteers.length),
+          },
+        ],
+        sections: SECTIONS.map((section) => ({
+          title: section.title,
+          heading: section.heading,
+          html: form[section.key] ?? "",
+        })),
+      });
+      downloadBlob(blob, `bilan-${year}-${coordinationKey}.docx`);
+    } catch {
+      alert("Échec de l'export.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">
           Bilan {year}
         </h2>
-        {canWrite && (
+        <div className="flex items-center gap-3">
+          {isDirty && (
+            <span className="text-sm text-amber-600 dark:text-amber-400">
+              Modifications non enregistrées
+            </span>
+          )}
           <button
             type="button"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={handleExportDocx}
+            disabled={isExporting}
+            className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-black/[.04] disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-white/[.08]"
           >
-            {isSaving ? "Enregistrement…" : "Enregistrer"}
+            <FileDown size={14} />
+            {isExporting ? "Export…" : "Exporter en Word"}
           </button>
-        )}
+          {canWrite && (
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSaving}
+              className="rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSaving ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -312,9 +364,10 @@ export default function BilanPanel({
             </label>
             <RichTextEditor
               value={form[section.key] ?? ""}
-              onChange={(html) =>
-                setForm((prev) => ({ ...prev, [section.key]: html }))
-              }
+              onChange={(html) => {
+                setForm((prev) => ({ ...prev, [section.key]: html }));
+                setIsDirty(true);
+              }}
               placeholder={section.placeholder}
               minHeight="8rem"
               readOnly={!canWrite}
@@ -323,16 +376,23 @@ export default function BilanPanel({
         ))}
       </div>
 
-      {canWrite && (
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={isSaving}
-          className="w-fit rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isSaving ? "Enregistrement…" : "Enregistrer"}
-        </button>
-      )}
+      <div className="flex items-center gap-3">
+        {isDirty && (
+          <span className="text-sm text-amber-600 dark:text-amber-400">
+            Modifications non enregistrées
+          </span>
+        )}
+        {canWrite && (
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="w-fit rounded-full bg-primary px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isSaving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

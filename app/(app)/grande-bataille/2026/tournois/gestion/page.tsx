@@ -301,7 +301,7 @@ function AddVolunteerSearch({
         <p className="mt-1 text-xs text-foreground/40">Recherche…</p>
       )}
       {suggestions.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
+        <div className="absolute z-30 mt-1 w-full rounded-lg border border-black/[.08] bg-white shadow-lg dark:border-white/[.145] dark:bg-zinc-800">
           {suggestions.map((c) => (
             <button
               key={c.external_id}

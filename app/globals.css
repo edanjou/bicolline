@@ -128,6 +128,40 @@ body {
   border-left-color: rgba(255, 255, 255, 0.2);
 }
 
+.prose-editor table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.prose-editor td,
+.prose-editor th {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.35em 0.6em;
+  vertical-align: top;
+  position: relative;
+}
+
+.prose-editor th {
+  font-weight: 600;
+  background-color: rgba(0, 0, 0, 0.03);
+  text-align: left;
+}
+
+:root.dark .prose-editor td,
+:root.dark .prose-editor th {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+:root.dark .prose-editor th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.prose-editor .selectedCell {
+  background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
 ::view-transition-old(.fade-out) {
   animation: 200ms ease-in both fade-out;
 }

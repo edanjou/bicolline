@@ -20,7 +20,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { Fragment, useEffect, useState } from "react";
 import { downloadBlob } from "@/lib/activity-docx-export";
-import { listActivityChapters, type ActivityChapter } from "@/lib/activity-chapters";
+import {
+  listActivityChapters,
+  updateActivityChapterTitle,
+  type ActivityChapter,
+} from "@/lib/activity-chapters";
 import {
   createMarechalTask,
   deleteMarechalTask,
@@ -28,7 +32,7 @@ import {
   updateMarechalTask,
   type MarechalTask,
 } from "@/lib/marechal-tasks";
-import { exportTasksGridToDocx } from "@/lib/marechal-tasks-grid-docx-export";
+import { exportTasksGridToPdf } from "@/lib/marechal-tasks-grid-pdf-export";
 import {
   listAssignedMarechalIdsByActivity,
   listMarechalActivityStatuses,
@@ -103,9 +107,9 @@ export default function MarechalTasksPanel({
 
   const firstCampaignTeamIndex = rows.findIndex((m) => m.is_campaign_team);
 
-  const handleExportDocx = async () => {
+  const handleExportPdf = async () => {
     try {
-      const blob = await exportTasksGridToDocx({
+      const blob = await exportTasksGridToPdf({
         activityName: activity.name,
         chapters,
         rows,
@@ -114,9 +118,9 @@ export default function MarechalTasksPanel({
         firstCampaignTeamIndex,
         marechalDisplayName,
       });
-      downloadBlob(blob, `Tâches — ${activity.name}.docx`);
+      downloadBlob(blob, `Tâches — ${activity.name}.pdf`);
     } catch {
-      alert("Échec de l'export Word.");
+      alert("Échec de l'export PDF.");
     }
   };
 
@@ -293,15 +297,51 @@ export default function MarechalTasksPanel({
     }
   };
 
+  const chapterTitleKey = (chapterId: string) => `chapter-title:${chapterId}`;
+
+  const chapterTitleValue = (chapter: ActivityChapter): string => {
+    const key = chapterTitleKey(chapter.id);
+    if (key in drafts) return drafts[key];
+    return chapter.title;
+  };
+
+  const handleChapterTitleChange = (chapterId: string, value: string) => {
+    setDrafts((prev) => ({ ...prev, [chapterTitleKey(chapterId)]: value }));
+  };
+
+  const handleChapterTitleBlur = async (chapter: ActivityChapter) => {
+    if (!canWrite) return;
+    const key = chapterTitleKey(chapter.id);
+    if (!(key in drafts)) return;
+    const value = drafts[key].trim();
+
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+
+    if (!value || value === chapter.title) return;
+
+    try {
+      await updateActivityChapterTitle(chapter.id, value);
+      setChapters((prev) =>
+        prev.map((c) => (c.id === chapter.id ? { ...c, title: value } : c)),
+      );
+    } catch {
+      alert("Échec de l'enregistrement.");
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-end">
         <button
           type="button"
-          onClick={handleExportDocx}
+          onClick={handleExportPdf}
           className="flex items-center gap-1.5 rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-foreground/70 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.08]"
         >
-          Exporter en Word
+          Exporter en PDF
         </button>
       </div>
 
@@ -347,43 +387,66 @@ export default function MarechalTasksPanel({
                     </th>
                     <th className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]">
                       Briefing
-                      <span className="block text-xs font-normal text-foreground/50">
-                        2e du garage
-                      </span>
                     </th>
                     <th className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]">
                       Homologation
-                      <span className="block text-xs font-normal text-foreground/50">
-                        8h-9h
-                      </span>
                     </th>
                     <th className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]">
                       Homologation
-                      <span className="block text-xs font-normal text-foreground/50">
-                        9h-10h
-                      </span>
                     </th>
                     {chapters.map((c) => (
                       <th
                         key={c.id}
-                        className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]"
+                        className="border border-black/[.15] px-1 py-2 font-semibold text-foreground dark:border-white/[.15]"
                       >
-                        {c.title}
+                        <input
+                          type="text"
+                          value={chapterTitleValue(c)}
+                          disabled={!canWrite}
+                          onChange={(e) =>
+                            handleChapterTitleChange(c.id, e.target.value)
+                          }
+                          onBlur={() => handleChapterTitleBlur(c)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") e.currentTarget.blur();
+                          }}
+                          className="w-full rounded border-0 bg-transparent px-2 py-1 text-center font-semibold text-foreground focus:bg-black/[.04] focus:outline-none disabled:opacity-60 dark:focus:bg-white/[.08]"
+                        />
+                      </th>
+                    ))}
+                    <th className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]">
+                      Debriefing
+                    </th>
+                  </tr>
+                  <tr className="bg-black/[.04] dark:bg-white/[.06]">
+                    <th className="border border-black/[.15] px-2 py-1 dark:border-white/[.15]" />
+                    <th className="border border-black/[.15] px-3 py-1 dark:border-white/[.15]" />
+                    <th className="border border-black/[.15] px-3 py-1 text-xs font-normal text-foreground/50 dark:border-white/[.15]">
+                      2e du garage
+                    </th>
+                    <th className="border border-black/[.15] px-3 py-1 text-xs font-normal text-foreground/50 dark:border-white/[.15]">
+                      8h-9h
+                    </th>
+                    <th className="border border-black/[.15] px-3 py-1 text-xs font-normal text-foreground/50 dark:border-white/[.15]">
+                      9h-10h
+                    </th>
+                    {chapters.map((c) => (
+                      <th
+                        key={c.id}
+                        className="border border-black/[.15] px-3 py-1 text-xs font-normal text-foreground/50 dark:border-white/[.15]"
+                      >
+                        {c.start_time && (
+                          <span className="block">{c.start_time}</span>
+                        )}
                         {c.battlefields.map((b) => (
-                          <span
-                            key={b.id}
-                            className="block text-xs font-normal text-foreground/50"
-                          >
+                          <span key={b.id} className="block">
                             {b.name}
                           </span>
                         ))}
                       </th>
                     ))}
-                    <th className="border border-black/[.15] px-3 py-3 font-semibold text-foreground dark:border-white/[.15]">
-                      Debriefing
-                      <span className="block text-xs font-normal text-foreground/50">
-                        2e du garage
-                      </span>
+                    <th className="border border-black/[.15] px-3 py-1 text-xs font-normal text-foreground/50 dark:border-white/[.15]">
+                      2e du garage
                     </th>
                   </tr>
                 </thead>

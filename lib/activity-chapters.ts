@@ -177,6 +177,17 @@ export async function createActivityChapter(
   return data.id;
 }
 
+export async function updateActivityChapterTitle(
+  id: string,
+  title: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from("activity_chapters")
+    .update({ title })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 export async function updateActivityChapter(
   id: string,
   input: ActivityChapterInput,
