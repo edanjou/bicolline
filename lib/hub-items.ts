@@ -34,6 +34,7 @@ import {
   Shirt,
   Swords,
   Theater,
+  TicketCheck,
   Trophy,
   Users,
   VenetianMask,
@@ -274,6 +275,12 @@ export const DASHBOARD_ITEMS: HubItem[] = [
     moduleKey: "comite-combat",
   },
   {
+    href: "/evenements/inscriptions",
+    label: "Inscriptions",
+    icon: TicketCheck,
+    moduleKey: "evenements",
+  },
+  {
     href: "#tournoi-des-nations",
     label: "Tournoi des nations",
     icon: Award,
@@ -347,6 +354,9 @@ BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/reglements"] =
   "Gestion des règlements";
 BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/inventaire"] =
   "Inventaire matériel";
+BREADCRUMB_LABELS["/evenements/liste"] = "Évènements";
+BREADCRUMB_LABELS["/evenements/admissions"] = "Admission";
+BREADCRUMB_LABELS["/evenements/inscriptions"] = "Inscriptions";
 BREADCRUMB_LABELS["/comite-combat/reglements"] = "Règles de combat";
 BREADCRUMB_LABELS["/comite-combat/standards"] = "Standards d'homologation";
 BREADCRUMB_LABELS["/comite-combat/avertissements"] = "Avertissements";

@@ -39,6 +39,7 @@ export const MODULES: ModuleDefinition[] = [
   { key: "costumes", label: "Costumes et accessoires" },
   { key: "calendrier", label: "Calendrier" },
   { key: "comite-combat", label: "Comité Combat" },
+  { key: "evenements", label: "Évènements" },
   { key: "parametres-synchronisation", label: "Paramètres — Synchronisation" },
   { key: "parametres-listes", label: "Paramètres — Listes réutilisables" },
   { key: "parametres-communications", label: "Paramètres — Communications" },
@@ -100,6 +101,7 @@ export const PERMISSION_TREE: PermissionTreeNode[] = [
   },
   { type: "leaf", module: moduleByKey("jeu") },
   { type: "leaf", module: moduleByKey("comite-combat") },
+  { type: "leaf", module: moduleByKey("evenements") },
   {
     type: "group",
     label: "Outils",

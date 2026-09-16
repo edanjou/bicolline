@@ -49,6 +49,12 @@ const CHARACTER_SYNC_FREQUENCY_KEY = "character_sync_frequency";
 const CHARACTER_LAST_SYNCED_KEY = "character_sync_last_synced_at";
 const RELIGION_MEMBER_SYNC_FREQUENCY_KEY = "religion_member_sync_frequency";
 const RELIGION_MEMBER_LAST_SYNCED_KEY = "religion_member_sync_last_synced_at";
+const EVENT_SYNC_FREQUENCY_KEY = "event_sync_frequency";
+const EVENT_LAST_SYNCED_KEY = "event_sync_last_synced_at";
+const EVENT_REGISTRATION_SYNC_FREQUENCY_KEY =
+  "event_registration_sync_frequency";
+const EVENT_REGISTRATION_LAST_SYNCED_KEY =
+  "event_registration_sync_last_synced_at";
 
 async function getSyncFrequency(key: string): Promise<SyncFrequency> {
   const value = await getAppSettingValue(key);
@@ -97,6 +103,26 @@ export function setReligionMemberSyncFrequency(
   return setSyncFrequency(RELIGION_MEMBER_SYNC_FREQUENCY_KEY, frequency);
 }
 
+export function getEventSyncFrequency(): Promise<SyncFrequency> {
+  return getSyncFrequency(EVENT_SYNC_FREQUENCY_KEY);
+}
+
+export function setEventSyncFrequency(
+  frequency: SyncFrequency,
+): Promise<void> {
+  return setSyncFrequency(EVENT_SYNC_FREQUENCY_KEY, frequency);
+}
+
+export function getEventRegistrationSyncFrequency(): Promise<SyncFrequency> {
+  return getSyncFrequency(EVENT_REGISTRATION_SYNC_FREQUENCY_KEY);
+}
+
+export function setEventRegistrationSyncFrequency(
+  frequency: SyncFrequency,
+): Promise<void> {
+  return setSyncFrequency(EVENT_REGISTRATION_SYNC_FREQUENCY_KEY, frequency);
+}
+
 export function getGuildLastSyncedAt(): Promise<string | null> {
   return getAppSettingValue(GUILD_LAST_SYNCED_KEY);
 }
@@ -107,4 +133,12 @@ export function getCharacterLastSyncedAt(): Promise<string | null> {
 
 export function getReligionMemberLastSyncedAt(): Promise<string | null> {
   return getAppSettingValue(RELIGION_MEMBER_LAST_SYNCED_KEY);
+}
+
+export function getEventLastSyncedAt(): Promise<string | null> {
+  return getAppSettingValue(EVENT_LAST_SYNCED_KEY);
+}
+
+export function getEventRegistrationLastSyncedAt(): Promise<string | null> {
+  return getAppSettingValue(EVENT_REGISTRATION_LAST_SYNCED_KEY);
 }

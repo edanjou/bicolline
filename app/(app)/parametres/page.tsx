@@ -7,12 +7,18 @@ import Breadcrumb from "@/components/breadcrumb";
 import {
   getCharacterLastSyncedAt,
   getCharacterSyncFrequency,
+  getEventLastSyncedAt,
+  getEventRegistrationLastSyncedAt,
+  getEventRegistrationSyncFrequency,
+  getEventSyncFrequency,
   getGuildLastSyncedAt,
   getGuildSyncFrequency,
   getReligionMemberLastSyncedAt,
   getReligionMemberSyncFrequency,
   GUILD_SYNC_FREQUENCIES,
   setCharacterSyncFrequency,
+  setEventRegistrationSyncFrequency,
+  setEventSyncFrequency,
   setGuildSyncFrequency,
   setReligionMemberSyncFrequency,
   type GuildSyncFrequency,
@@ -140,6 +146,121 @@ function GuildSyncSettings({ canWrite }: { canWrite: boolean }) {
       <p className="mt-1 text-sm text-foreground/60">
         Fréquence à laquelle les guildes et sceaux sont récupérés depuis
         bicolline.online.
+      </p>
+
+      {isLoading ? (
+        <p className="mt-4 text-sm text-foreground/60">Chargement…</p>
+      ) : (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <select
+            value={frequency}
+            onChange={handleChange}
+            disabled={isSaving || !canWrite}
+            className="rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
+          >
+            {GUILD_SYNC_FREQUENCIES.map((f) => (
+              <option key={f.value} value={f.value}>
+                {f.label}
+              </option>
+            ))}
+          </select>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={handleSyncNow}
+              disabled={isSyncing}
+              className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#0c4390] disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSyncing ? "Synchronisation…" : "Synchroniser"}
+            </button>
+          )}
+          <span className="text-sm text-foreground/60">
+            Dernière synchronisation : {formatSyncDate(lastSyncedAt)}
+          </span>
+        </div>
+      )}
+
+      {message && (
+        <p className="mt-2 text-sm text-green-600 dark:text-green-400">
+          {message}
+        </p>
+      )}
+      {error && (
+        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+      )}
+    </div>
+  );
+}
+
+function EventSyncSettings({ canWrite }: { canWrite: boolean }) {
+  const [frequency, setFrequency] = useState<GuildSyncFrequency>("weekly");
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([getEventSyncFrequency(), getEventLastSyncedAt()]).then(
+      ([freq, lastSynced]) => {
+        setFrequency(freq);
+        setLastSyncedAt(lastSynced);
+        setIsLoading(false);
+      },
+    );
+  }, []);
+
+  const handleChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const next = e.target.value as GuildSyncFrequency;
+    setFrequency(next);
+    setError(null);
+    setMessage(null);
+    setIsSaving(true);
+    try {
+      await setEventSyncFrequency(next);
+      setMessage("Fréquence mise à jour.");
+    } catch {
+      setError("Échec de la mise à jour de la fréquence.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setError(null);
+    setMessage(null);
+    setIsSyncing(true);
+    try {
+      const token = await getAuthToken();
+      const res = await fetch("/api/admin/sync-events", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Échec de la synchronisation.");
+        return;
+      }
+      setLastSyncedAt(await getEventLastSyncedAt());
+      setMessage(
+        `${data.eventsSynced} évènements et ${data.optionsSynced} admissions synchronisés.`,
+      );
+    } catch {
+      setError("Échec de la synchronisation.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  return (
+    <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-zinc-900">
+      <h2 className="font-semibold text-foreground">
+        Synchronisation des évènements et admissions
+      </h2>
+      <p className="mt-1 text-sm text-foreground/60">
+        Liste des évènements et des quotas d&apos;admission par guilde,
+        depuis bicolline.online.
       </p>
 
       {isLoading ? (
@@ -1222,6 +1343,18 @@ export default function ParametresPage() {
               getLastSyncedAt={getReligionMemberLastSyncedAt}
               getFrequency={getReligionMemberSyncFrequency}
               setFrequency={setReligionMemberSyncFrequency}
+              canWrite={syncLevel === "ecriture"}
+            />
+            <EventSyncSettings canWrite={syncLevel === "ecriture"} />
+            <ChunkedSyncSettings
+              title="Synchronisation des inscriptions"
+              description="Nom, courriel et statut de présence des inscrits, pour les évènements 2026 et plus récents seulement, depuis bicolline.online. Plusieurs milliers de lignes — la première synchronisation peut prendre plusieurs minutes, et se poursuit automatiquement au clic suivant si elle est interrompue."
+              endpoint="/api/admin/sync-event-registrations"
+              resultKey="registrationsSynced"
+              unitLabel="inscriptions"
+              getLastSyncedAt={getEventRegistrationLastSyncedAt}
+              getFrequency={getEventRegistrationSyncFrequency}
+              setFrequency={setEventRegistrationSyncFrequency}
               canWrite={syncLevel === "ecriture"}
             />
           </CategoryGroup>
