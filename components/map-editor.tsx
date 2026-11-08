@@ -724,7 +724,7 @@ const COMPASS_NATURAL_WIDTH = 492;
 const COMPASS_NATURAL_HEIGHT = 502;
 const COMPASS_CENTER_X = 249.5;
 const COMPASS_CENTER_Y = 250;
-const COMPASS_HEIGHT = 110;
+const COMPASS_HEIGHT = 77;
 
 // Rose des vents en coin de carte. La carte de fond est orientée nord en haut :
 // la rose pivote avec le fond pour pointer toujours vers le nord.
