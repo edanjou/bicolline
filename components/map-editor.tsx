@@ -21,6 +21,7 @@ import {
   Paperclip,
   Pencil,
   Pentagon,
+  RotateCw,
   Save,
   Slash,
   Trash2,
@@ -69,7 +70,7 @@ const NUGROS_FONT_FAMILY = nugrosBold.style.fontFamily;
 type DragShapeKind = "line" | "arrow" | "circle";
 type MapShapeKind = DragShapeKind | "polygon";
 
-type Tool = "select" | "draw" | MapShapeKind | "text";
+type Tool = "select" | "draw" | MapShapeKind | "text" | "rotate-background";
 
 const SHAPE_TOOLS: DragShapeKind[] = ["line", "arrow", "circle"];
 
@@ -142,14 +143,25 @@ export type CanvasSize = {
   height: number;
 };
 
+// Position du centre de l'image de fond (coordonnées du canevas), échelle et rotation en degrés.
+export type BackgroundTransform = {
+  x: number;
+  y: number;
+  scale: number;
+  rotation: number;
+};
+
 export type MapEditorData = {
   backgroundSrc: string | null;
+  backgroundTransform?: BackgroundTransform | null;
+  zoom?: number;
   canvasSize: CanvasSize;
   overlays: OverlayShape[];
   lines: DrawnLine[];
   mapShapes: MapShape[];
   textShapes: TextShape[];
   showGrid?: boolean;
+  showCompass?: boolean;
 };
 
 type DragOrigin = {
@@ -160,7 +172,16 @@ type DragOrigin = {
 const CANVAS_PRESETS: { label: string; width: number; height: number }[] = [
   { label: "3:2 (1200 × 800)", width: 1200, height: 800 },
   { label: "1:1 (1000 × 1000)", width: 1000, height: 1000 },
+  { label: "4:3 (1200 × 900)", width: 1200, height: 900 },
+  { label: "16:9 (1600 × 900)", width: 1600, height: 900 },
+  { label: "A4 paysage (1414 × 1000)", width: 1414, height: 1000 },
+  { label: "A4 portrait (1000 × 1414)", width: 1000, height: 1414 },
+  { label: "4:5 portrait (1000 × 1250)", width: 1000, height: 1250 },
+  { label: "9:16 story (900 × 1600)", width: 900, height: 1600 },
 ];
+const CUSTOM_CANVAS_VALUE = "__custom__";
+const MIN_CANVAS_DIMENSION = 100;
+const MAX_CANVAS_DIMENSION = 4000;
 
 // Nombre de colonnes/rangées du quadrillage selon le format de la carte.
 const GRID_LAYOUT_BY_CANVAS_SIZE: Record<string, { cols: number; rows: number }> = {
@@ -696,6 +717,74 @@ function MapWatermark({
   );
 }
 
+const COMPASS_RADIUS = 34;
+
+// Rose des vents en coin de carte. La carte de fond est orientée nord en haut :
+// la rose pivote avec le fond pour pointer toujours vers le nord.
+function MapCompassRose({
+  displayWidth,
+  rotation,
+}: {
+  displayWidth: number;
+  rotation: number;
+}) {
+  const r = COMPASS_RADIUS;
+  const arm = (angle: number, length: number, halfWidth: number) => {
+    const rad = (angle * Math.PI) / 180;
+    const tip = [Math.sin(rad) * length, -Math.cos(rad) * length];
+    const left = [-Math.cos(rad) * halfWidth, -Math.sin(rad) * halfWidth];
+    const right = [Math.cos(rad) * halfWidth, Math.sin(rad) * halfWidth];
+    return { tip, left, right };
+  };
+  const arms = [
+    ...[45, 135, 225, 315].map((angle) => ({
+      angle,
+      ...arm(angle, r * 0.5, r * 0.1),
+      dark: "#52525b",
+      light: "#d4d4d8",
+    })),
+    ...[0, 90, 180, 270].map((angle) => ({
+      angle,
+      ...arm(angle, r * 0.66, r * 0.15),
+      dark: angle === 0 ? "#991b1b" : "#1c1c1c",
+      light: angle === 0 ? "#dc2626" : "#a1a1aa",
+    })),
+  ];
+
+  return (
+    <Group
+      x={displayWidth - WATERMARK_MARGIN - r}
+      y={WATERMARK_MARGIN + r}
+      rotation={rotation}
+      listening={false}
+    >
+      <Circle
+        radius={r}
+        fill="rgba(255,255,255,0.85)"
+        stroke="#1c1c1c"
+        strokeWidth={1.5}
+      />
+      <Circle radius={r * 0.62} stroke="#1c1c1c" strokeWidth={0.75} />
+      {arms.map(({ angle, tip, left, right, dark, light }) => (
+        <Group key={angle}>
+          <Line points={[0, 0, ...tip, ...left]} closed fill={dark} />
+          <Line points={[0, 0, ...tip, ...right]} closed fill={light} />
+        </Group>
+      ))}
+      <Text
+        text="N"
+        x={-6}
+        y={-r + 1}
+        width={12}
+        align="center"
+        fontSize={10}
+        fontStyle="bold"
+        fill="#991b1b"
+      />
+    </Group>
+  );
+}
+
 function MapGridOverlay({
   cols,
   rows,
@@ -802,6 +891,8 @@ function BackgroundImage({
   imageRef,
   draggable,
   canvasSize,
+  transform,
+  onTransformChange,
   pinLayers,
   getAllLayerEntries,
   onCommitPan,
@@ -810,6 +901,8 @@ function BackgroundImage({
   imageRef: React.RefObject<Konva.Image | null>;
   draggable: boolean;
   canvasSize: CanvasSize;
+  transform: BackgroundTransform | null;
+  onTransformChange: (transform: BackgroundTransform) => void;
   pinLayers: boolean;
   getAllLayerEntries: () => [string, Konva.Node][];
   onCommitPan: (
@@ -819,7 +912,6 @@ function BackgroundImage({
   ) => void;
 }) {
   const [image] = useImage(src, "anonymous");
-  const hasFitRef = useRef(false);
   const panOriginRef = useRef<{
     startX: number;
     startY: number;
@@ -827,24 +919,18 @@ function BackgroundImage({
   } | null>(null);
 
   useEffect(() => {
-    hasFitRef.current = false;
-  }, [src]);
-
-  useEffect(() => {
-    if (!image || hasFitRef.current || !imageRef.current) return;
+    if (!image || transform) return;
     const fitScale = Math.min(
       canvasSize.width / image.width,
       canvasSize.height / image.height,
     );
-    const scale = fitScale * BACKGROUND_SCALE;
-    imageRef.current.scale({ x: scale, y: scale });
-    imageRef.current.position({
-      x: (canvasSize.width - image.width * scale) / 2,
-      y: (canvasSize.height - image.height * scale) / 2,
+    onTransformChange({
+      x: canvasSize.width / 2,
+      y: canvasSize.height / 2,
+      scale: fitScale * BACKGROUND_SCALE,
+      rotation: 0,
     });
-    imageRef.current.getLayer()?.batchDraw();
-    hasFitRef.current = true;
-  }, [image, imageRef, canvasSize]);
+  }, [image, transform, canvasSize, onTransformChange]);
 
   const handleDragStart = (e: KonvaEventObject<DragEvent>) => {
     if (!pinLayers) {
@@ -882,14 +968,23 @@ function BackgroundImage({
       onCommitPan(state.origins, dx, dy);
     }
     panOriginRef.current = null;
+    if (transform)
+      onTransformChange({ ...transform, x: e.target.x(), y: e.target.y() });
   };
 
-  if (!image) return null;
+  if (!image || !transform) return null;
 
   return (
     <KonvaImage
       ref={imageRef}
       image={image}
+      x={transform.x}
+      y={transform.y}
+      offsetX={image.width / 2}
+      offsetY={image.height / 2}
+      scaleX={transform.scale}
+      scaleY={transform.scale}
+      rotation={transform.rotation}
       draggable={draggable}
       name="background-image"
       onDragStart={handleDragStart}
@@ -1359,6 +1454,8 @@ export default function MapEditor({
   const [backgroundSrc, setBackgroundSrc] = useState<string | null>(
     DEFAULT_BACKGROUND_URL,
   );
+  const [backgroundTransform, setBackgroundTransform] =
+    useState<BackgroundTransform | null>(null);
   const [overlays, setOverlays] = useState<OverlayShape[]>([]);
   const [lines, setLines] = useState<DrawnLine[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -1368,7 +1465,10 @@ export default function MapEditor({
     width: 1200,
     height: 800,
   });
+  const [canvasWidthInput, setCanvasWidthInput] = useState("1200");
+  const [canvasHeightInput, setCanvasHeightInput] = useState("800");
   const [showGrid, setShowGrid] = useState(false);
+  const [showCompass, setShowCompass] = useState(false);
   const [libraryEntries, setLibraryEntries] = useState<MediaEntry[]>([]);
   const [libraryPath, setLibraryPath] = useState(DEFAULT_LIBRARY_FOLDER);
   const [selectedMediaPaths, setSelectedMediaPaths] = useState<string[]>([]);
@@ -1415,6 +1515,11 @@ export default function MapEditor({
   const transformerRef = useRef<Konva.Transformer>(null);
   const bgImageRef = useRef<Konva.Image>(null);
   const backgroundBlobUrlRef = useRef<string | null>(null);
+  const backgroundRotationRef = useRef<{
+    pivot: { x: number; y: number };
+    startAngle: number;
+    start: BackgroundTransform;
+  } | null>(null);
   const shapeRefs = useRef(new Map<string, Konva.Image>());
   const lineRefs = useRef(new Map<string, Konva.Line>());
   const mapShapeRefs = useRef(new Map<string, Konva.Shape>());
@@ -1711,6 +1816,7 @@ export default function MapEditor({
         URL.revokeObjectURL(backgroundBlobUrlRef.current);
       backgroundBlobUrlRef.current = url;
       setBackgroundSrc(url);
+      setBackgroundTransform(null);
     } catch {
       setUploadError("Échec du traitement de l'image de fond.");
     }
@@ -2118,11 +2224,84 @@ export default function MapEditor({
     }
   };
 
-  const applyCanvasSize = (width: number, height: number) => {
-    const w = Math.max(100, Math.min(4000, Math.round(width)));
-    const h = Math.max(100, Math.min(4000, Math.round(height)));
-    setCanvasSize({ width: w, height: h });
+  // Le fond pivote autour du centre du plan de travail : on fait tourner son
+  // centre autour de ce pivot pour que la zone visible reste en place.
+  const startBackgroundRotation = (pos: { x: number; y: number }) => {
+    if (!backgroundTransform) return;
+    const pivot = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
+    backgroundRotationRef.current = {
+      pivot,
+      startAngle: Math.atan2(pos.y - pivot.y, pos.x - pivot.x),
+      start: backgroundTransform,
+    };
   };
+
+  const updateBackgroundRotation = (
+    pos: { x: number; y: number },
+    snap: boolean,
+  ) => {
+    const state = backgroundRotationRef.current;
+    if (!state) return;
+    const { pivot, start } = state;
+    let delta =
+      ((Math.atan2(pos.y - pivot.y, pos.x - pivot.x) - state.startAngle) *
+        180) /
+      Math.PI;
+    if (snap)
+      delta = Math.round((start.rotation + delta) / 15) * 15 - start.rotation;
+    const rad = (delta * Math.PI) / 180;
+    const dx = start.x - pivot.x;
+    const dy = start.y - pivot.y;
+    const normalized = (((start.rotation + delta) % 360) + 360) % 360;
+    setBackgroundTransform({
+      ...start,
+      x: pivot.x + dx * Math.cos(rad) - dy * Math.sin(rad),
+      y: pivot.y + dx * Math.sin(rad) + dy * Math.cos(rad),
+      rotation: normalized > 180 ? normalized - 360 : normalized,
+    });
+  };
+
+  const clampCanvasDimension = (value: number) =>
+    Math.max(
+      MIN_CANVAS_DIMENSION,
+      Math.min(MAX_CANVAS_DIMENSION, Math.round(value)),
+    );
+
+  const applyCanvasSize = (width: number, height: number) => {
+    setCanvasSize({
+      width: clampCanvasDimension(width),
+      height: clampCanvasDimension(height),
+    });
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- keeps the dimension inputs in sync when the format changes via the preset menu/load
+    setCanvasWidthInput(String(canvasSize.width));
+    setCanvasHeightInput(String(canvasSize.height));
+  }, [canvasSize.width, canvasSize.height]);
+
+  const commitCanvasSizeInputs = () => {
+    const width = parseFloat(canvasWidthInput);
+    const height = parseFloat(canvasHeightInput);
+    if (Number.isFinite(width) && Number.isFinite(height)) {
+      const next = {
+        width: clampCanvasDimension(width),
+        height: clampCanvasDimension(height),
+      };
+      applyCanvasSize(next.width, next.height);
+      setCanvasWidthInput(String(next.width));
+      setCanvasHeightInput(String(next.height));
+    } else {
+      setCanvasWidthInput(String(canvasSize.width));
+      setCanvasHeightInput(String(canvasSize.height));
+    }
+  };
+
+  const currentPresetValue = CANVAS_PRESETS.some(
+    (p) => p.width === canvasSize.width && p.height === canvasSize.height,
+  )
+    ? `${canvasSize.width}x${canvasSize.height}`
+    : CUSTOM_CANVAS_VALUE;
 
   const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const preset = CANVAS_PRESETS.find(
@@ -2342,6 +2521,11 @@ export default function MapEditor({
     const pos = stage.getRelativePointerPosition();
     if (!pos) return;
 
+    if (tool === "rotate-background") {
+      startBackgroundRotation(pos);
+      return;
+    }
+
     if (tool === "draw") {
       startDrawing(pos);
       return;
@@ -2410,11 +2594,16 @@ export default function MapEditor({
     }
   };
 
-  const handlePointerMove = () => {
+  const handlePointerMove = (e: KonvaEventObject<MouseEvent | TouchEvent>) => {
     const stage = stageRef.current;
     if (!stage) return;
     const pos = stage.getRelativePointerPosition();
     if (!pos) return;
+
+    if (tool === "rotate-background") {
+      updateBackgroundRotation(pos, e.evt.shiftKey);
+      return;
+    }
 
     if (tool === "draw" && isDrawingRef.current) {
       continueDrawing(pos);
@@ -2443,6 +2632,10 @@ export default function MapEditor({
   };
 
   const handlePointerUp = () => {
+    if (tool === "rotate-background") {
+      backgroundRotationRef.current = null;
+      return;
+    }
     if (tool === "draw" && isDrawingRef.current) {
       finishDrawing();
       return;
@@ -2570,19 +2763,27 @@ export default function MapEditor({
 
     return {
       backgroundSrc: persistedBackground,
+      backgroundTransform,
+      zoom: zoomMultiplier,
       canvasSize,
       overlays: persistedOverlays,
       lines,
       mapShapes,
       textShapes,
       showGrid,
+      showCompass,
     };
   };
 
   const loadProjectData = (data: MapEditorData) => {
     setBackgroundSrc(data.backgroundSrc);
+    setBackgroundTransform(data.backgroundTransform ?? null);
+    setZoomMultiplier(
+      Math.min(MAX_STAGE_SCALE, Math.max(MIN_STAGE_SCALE, data.zoom ?? 1)),
+    );
     setCanvasSize(data.canvasSize);
     setShowGrid(data.showGrid ?? false);
+    setShowCompass(data.showCompass ?? false);
     setOverlays((data.overlays ?? []).map((o) => ({ ...o, groupId: o.groupId ?? null })));
     setLines((data.lines ?? []).map((l) => ({ ...l, groupId: l.groupId ?? null })));
     setMapShapes((data.mapShapes ?? []).map((s) => ({ ...s, groupId: s.groupId ?? null })));
@@ -2599,8 +2800,11 @@ export default function MapEditor({
   const handleNewMap = () => {
     if (!canWrite) return;
     setBackgroundSrc(DEFAULT_BACKGROUND_URL);
+    setBackgroundTransform(null);
+    setZoomMultiplier(1);
     setCanvasSize({ width: 1200, height: 800 });
     setShowGrid(false);
+    setShowCompass(false);
     setOverlays([]);
     setLines([]);
     setMapShapes([]);
@@ -2827,7 +3031,7 @@ export default function MapEditor({
         <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <span>Format</span>
           <select
-            value={`${canvasSize.width}x${canvasSize.height}`}
+            value={currentPresetValue}
             onChange={handlePresetChange}
             className="rounded border border-black/[.08] bg-white px-2 py-1 dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50"
           >
@@ -2836,7 +3040,39 @@ export default function MapEditor({
                 {p.label}
               </option>
             ))}
+            {currentPresetValue === CUSTOM_CANVAS_VALUE && (
+              <option value={CUSTOM_CANVAS_VALUE}>Personnalisé</option>
+            )}
           </select>
+          <input
+            type="number"
+            min={MIN_CANVAS_DIMENSION}
+            max={MAX_CANVAS_DIMENSION}
+            value={canvasWidthInput}
+            onChange={(e) => setCanvasWidthInput(e.target.value)}
+            onBlur={commitCanvasSizeInputs}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            aria-label="Largeur de la carte en pixels"
+            title="Largeur (px)"
+            className="w-14 rounded border border-black/[.08] bg-white px-1 py-1 text-center [appearance:textfield] dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <span>×</span>
+          <input
+            type="number"
+            min={MIN_CANVAS_DIMENSION}
+            max={MAX_CANVAS_DIMENSION}
+            value={canvasHeightInput}
+            onChange={(e) => setCanvasHeightInput(e.target.value)}
+            onBlur={commitCanvasSizeInputs}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") e.currentTarget.blur();
+            }}
+            aria-label="Hauteur de la carte en pixels"
+            title="Hauteur (px)"
+            className="w-14 rounded border border-black/[.08] bg-white px-1 py-1 text-center [appearance:textfield] dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
         </div>
 
         <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
@@ -2848,6 +3084,15 @@ export default function MapEditor({
               className="h-4 w-4 accent-primary"
             />
             Quadrillage
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={showCompass}
+              onChange={(e) => setShowCompass(e.target.checked)}
+              className="h-4 w-4 accent-primary"
+            />
+            Rose des vents
           </label>
         </div>
 
@@ -2966,6 +3211,14 @@ export default function MapEditor({
               >
                 <TypeIcon size={18} />
               </ToolbarButton>
+              <ToolbarButton
+                label="Pivoter le fond (Maj : par pas de 15°)"
+                active={tool === "rotate-background"}
+                onClick={() => handleSetTool("rotate-background")}
+                disabled={!backgroundTransform}
+              >
+                <RotateCw size={18} />
+              </ToolbarButton>
             </>
           )}
           <div className="mx-1 h-6 w-px bg-black/[.08] dark:bg-white/[.145]" />
@@ -2989,6 +3242,7 @@ export default function MapEditor({
           <ToolbarButton label="Dézoomer" onClick={() => zoomStage(1 / 1.2)}>
             <ZoomOut size={18} />
           </ToolbarButton>
+
           {canWrite && (
             <>
               <div className="mx-1 h-6 w-px bg-black/[.08] dark:bg-white/[.145]" />
@@ -3291,6 +3545,8 @@ export default function MapEditor({
                     imageRef={bgImageRef}
                     draggable={canWrite && tool === "select"}
                     canvasSize={canvasSize}
+                    transform={backgroundTransform}
+                    onTransformChange={setBackgroundTransform}
                     pinLayers={pinLayersToBackground}
                     getAllLayerEntries={getAllLayerEntries}
                     onCommitPan={handleCommitGroupMove}
@@ -3408,6 +3664,32 @@ export default function MapEditor({
                   visible={false}
                   listening={false}
                 />
+                {tool === "rotate-background" && backgroundTransform && (
+                  <Group
+                    x={canvasSize.width / 2}
+                    y={canvasSize.height / 2}
+                    scaleX={1 / zoomMultiplier}
+                    scaleY={1 / zoomMultiplier}
+                    listening={false}
+                  >
+                    <Circle
+                      radius={6}
+                      fill="#ffffff"
+                      stroke="#0e4fa7"
+                      strokeWidth={2}
+                    />
+                    <Text
+                      x={12}
+                      y={-8}
+                      text={`${Math.round(backgroundTransform.rotation)}°`}
+                      fontSize={16}
+                      fontStyle="bold"
+                      fill="#ffffff"
+                      stroke="#0e4fa7"
+                      strokeWidth={0.5}
+                    />
+                  </Group>
+                )}
                 <Transformer
                   ref={transformerRef}
                   rotateEnabled
@@ -3438,6 +3720,12 @@ export default function MapEditor({
                     rows={gridLayout.rows}
                     displayWidth={displayWidth}
                     displayHeight={displayHeight}
+                  />
+                )}
+                {showCompass && (
+                  <MapCompassRose
+                    displayWidth={displayWidth}
+                    rotation={backgroundTransform?.rotation ?? 0}
                   />
                 )}
                 <MapWatermark
