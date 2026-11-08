@@ -717,7 +717,8 @@ function MapWatermark({
   );
 }
 
-const COMPASS_RADIUS = 34;
+const COMPASS_SRC = "/rose-des-vents.svg";
+const COMPASS_SIZE = 96;
 
 // Rose des vents en coin de carte. La carte de fond est orientée nord en haut :
 // la rose pivote avec le fond pour pointer toujours vers le nord.
@@ -728,60 +729,20 @@ function MapCompassRose({
   displayWidth: number;
   rotation: number;
 }) {
-  const r = COMPASS_RADIUS;
-  const arm = (angle: number, length: number, halfWidth: number) => {
-    const rad = (angle * Math.PI) / 180;
-    const tip = [Math.sin(rad) * length, -Math.cos(rad) * length];
-    const left = [-Math.cos(rad) * halfWidth, -Math.sin(rad) * halfWidth];
-    const right = [Math.cos(rad) * halfWidth, Math.sin(rad) * halfWidth];
-    return { tip, left, right };
-  };
-  const arms = [
-    ...[45, 135, 225, 315].map((angle) => ({
-      angle,
-      ...arm(angle, r * 0.5, r * 0.1),
-      dark: "#52525b",
-      light: "#d4d4d8",
-    })),
-    ...[0, 90, 180, 270].map((angle) => ({
-      angle,
-      ...arm(angle, r * 0.66, r * 0.15),
-      dark: angle === 0 ? "#991b1b" : "#1c1c1c",
-      light: angle === 0 ? "#dc2626" : "#a1a1aa",
-    })),
-  ];
+  const [image] = useImage(COMPASS_SRC, "anonymous");
 
   return (
-    <Group
-      x={displayWidth - WATERMARK_MARGIN - r}
-      y={WATERMARK_MARGIN + r}
+    <KonvaImage
+      image={image}
+      x={displayWidth - WATERMARK_MARGIN - COMPASS_SIZE / 2}
+      y={WATERMARK_MARGIN + COMPASS_SIZE / 2}
+      width={COMPASS_SIZE}
+      height={COMPASS_SIZE}
+      offsetX={COMPASS_SIZE / 2}
+      offsetY={COMPASS_SIZE / 2}
       rotation={rotation}
       listening={false}
-    >
-      <Circle
-        radius={r}
-        fill="rgba(255,255,255,0.85)"
-        stroke="#1c1c1c"
-        strokeWidth={1.5}
-      />
-      <Circle radius={r * 0.62} stroke="#1c1c1c" strokeWidth={0.75} />
-      {arms.map(({ angle, tip, left, right, dark, light }) => (
-        <Group key={angle}>
-          <Line points={[0, 0, ...tip, ...left]} closed fill={dark} />
-          <Line points={[0, 0, ...tip, ...right]} closed fill={light} />
-        </Group>
-      ))}
-      <Text
-        text="N"
-        x={-6}
-        y={-r + 1}
-        width={12}
-        align="center"
-        fontSize={10}
-        fontStyle="bold"
-        fill="#991b1b"
-      />
-    </Group>
+    />
   );
 }
 
