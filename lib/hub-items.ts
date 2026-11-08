@@ -4,6 +4,7 @@ import {
   Axe,
   Brain,
   BriefcaseMedical,
+  CalendarCheck,
   CalendarClock,
   CalendarDays,
   Castle,
@@ -88,6 +89,12 @@ export const COMBAT_ITEMS: HubItem[] = [
     label: "Inventaire matériel",
     icon: Package,
     moduleKey: "inventaire-combat",
+  },
+  {
+    href: "/grande-bataille/2026/combat/disponibilites",
+    label: "Disponibilités",
+    icon: CalendarCheck,
+    moduleKey: "disponibilites",
   },
 ];
 
