@@ -1,10 +1,32 @@
 "use client";
 
-import { Hourglass, Search, Stamp, User, Users } from "lucide-react";
+import {
+  Anchor,
+  Castle,
+  Flag,
+  Hourglass,
+  Map as MapIcon,
+  Search,
+  Sparkles,
+  Stamp,
+  User,
+  Users,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { glofters } from "@/app/fonts/glofters";
 import Breadcrumb from "@/components/breadcrumb";
 import { Pagination, usePagination } from "@/components/pagination";
+import {
+  ArmeesTab,
+  CroyancesTab,
+  DomainesTab,
+  GeographieTab,
+  GuildDetailModal,
+  NaviresTab,
+  SyncedAt,
+  text,
+  useGameSnapshot,
+} from "@/components/game-data-tabs";
 import RequireFeature from "@/components/require-feature";
 import { searchCharacters, type Character } from "@/lib/characters";
 import { listGuilds, type Guild } from "@/lib/guilds";
@@ -16,13 +38,27 @@ import {
   type SablierSummary,
 } from "@/lib/religions";
 
-type Tab = "guildes" | "sceaux" | "personnages" | "croyances" | "sabliers";
+type Tab =
+  | "guildes"
+  | "sceaux"
+  | "personnages"
+  | "croyances"
+  | "sabliers"
+  | "domaines"
+  | "geographie"
+  | "armees"
+  | "navires";
 
 const TABS: { key: Tab; label: string; icon: typeof Users }[] = [
   { key: "guildes", label: "Guildes", icon: Users },
   { key: "sceaux", label: "Sceaux", icon: Stamp },
   { key: "personnages", label: "Personnages", icon: User },
+  { key: "croyances", label: "Croyances", icon: Sparkles },
   { key: "sabliers", label: "Sabliers", icon: Hourglass },
+  { key: "domaines", label: "Domaines", icon: Castle },
+  { key: "geographie", label: "Géographie", icon: MapIcon },
+  { key: "armees", label: "Armées", icon: Flag },
+  { key: "navires", label: "Navires", icon: Anchor },
 ];
 
 const inputClassName =
@@ -67,6 +103,9 @@ function GuildesTab({
 }) {
   const [guilds, setGuilds] = useState<Guild[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedGuildId, setSelectedGuildId] = useState<number | null>(null);
+  const { snapshot: gameGuilds } = useGameSnapshot("guild");
+  const gameGuild = (id: number) => gameGuilds?.data[String(id)];
 
   useEffect(() => {
     listGuilds()
@@ -78,6 +117,8 @@ function GuildesTab({
   const visible = guilds.filter(
     (g) =>
       g.name.toLowerCase().includes(q) ||
+      text(gameGuild(g.external_id)?.general.region).toLowerCase().includes(q) ||
+      text(gameGuild(g.external_id)?.general.province).toLowerCase().includes(q) ||
       String(g.member_count ?? "").includes(q) ||
       String(g.presence_count ?? "").includes(q) ||
       (g.is_faction ? "oui" : "non").includes(q),
@@ -104,6 +145,9 @@ function GuildesTab({
           <thead className="sticky top-0 z-10 bg-background">
             <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
               <th className="py-2 pr-4 font-medium">Nom</th>
+              <th className="py-2 pr-4 font-medium">Région</th>
+              <th className="py-2 pr-4 font-medium">Province</th>
+              <th className="py-2 pr-4 font-medium">Notoriété</th>
               <th className="py-2 pr-4 font-medium">Membres</th>
               <th className="py-2 pr-4 font-medium">Présences</th>
               <th className="py-2 pr-4 font-medium">Faction</th>
@@ -112,7 +156,24 @@ function GuildesTab({
           <tbody>
             {pageItems.map((g) => (
               <tr key={g.external_id} className={rowClassName}>
-                <td className="py-2 pr-4 text-foreground">{g.name}</td>
+                <td className="py-2 pr-4 text-foreground">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGuildId(g.external_id)}
+                    className={linkClassName}
+                  >
+                    {g.name}
+                  </button>
+                </td>
+                <td className="py-2 pr-4 text-foreground/80">
+                  {text(gameGuild(g.external_id)?.general.region) || "—"}
+                </td>
+                <td className="py-2 pr-4 text-foreground/80">
+                  {text(gameGuild(g.external_id)?.general.province) || "—"}
+                </td>
+                <td className="py-2 pr-4 text-foreground/80">
+                  {gameGuild(g.external_id)?.notoriety.current_notoriety ?? "—"}
+                </td>
                 <td className="py-2 pr-4 text-foreground/80">
                   {g.member_count ?? "—"}
                 </td>
@@ -128,6 +189,13 @@ function GuildesTab({
         </table>
       </div>
       <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+      {gameGuilds && <SyncedAt syncedAt={gameGuilds.syncedAt} />}
+      {selectedGuildId !== null && (
+        <GuildDetailModal
+          guildId={selectedGuildId}
+          onClose={() => setSelectedGuildId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -368,65 +436,6 @@ function PersonnagesTab({
   );
 }
 
-function CroyancesTab() {
-  const [religions, setReligions] = useState<Religion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [query, setQuery] = useState("");
-
-  useEffect(() => {
-    listReligions()
-      .then(setReligions)
-      .finally(() => setIsLoading(false));
-  }, []);
-
-  const religionsQuery = query.toLowerCase();
-  const visible = religions.filter(
-    (r) =>
-      r.name.toLowerCase().includes(religionsQuery) ||
-      String(r.memberCount).includes(religionsQuery),
-  );
-  const { page, pageCount, setPage, pageItems } = usePagination(visible);
-
-  if (isLoading)
-    return <p className="text-sm text-foreground/60">Chargement…</p>;
-
-  return (
-    <div>
-      <div className="mb-4 flex items-center justify-between">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          placeholder="Rechercher une croyance…"
-        />
-        <span className="text-sm text-foreground/60">
-          {visible.length} / {religions.length} croyances
-        </span>
-      </div>
-      <div className="max-h-[70vh] overflow-auto">
-        <table className="w-full min-w-[400px] text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-background">
-            <tr className="border-b border-black/[.08] text-foreground/60 dark:border-white/[.08]">
-              <th className="py-2 pr-4 font-medium">Nom</th>
-              <th className="py-2 pr-4 font-medium">Fidèles</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pageItems.map((r) => (
-              <tr key={r.name} className={rowClassName}>
-                <td className="py-2 pr-4 text-foreground">{r.name}</td>
-                <td className="py-2 pr-4 text-foreground/80">
-                  {r.memberCount}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
-    </div>
-  );
-}
-
 type SablierFilter = "tous" | "grands-pretres-clercs" | "pretres";
 
 type SablierRow = {
@@ -647,7 +656,7 @@ function JeuContent() {
         </div>
       )}
 
-      <div className="mt-6 flex gap-2 border-b border-black/[.08] dark:border-white/[.08]">
+      <div className="mt-6 flex gap-2 overflow-x-auto border-b border-black/[.08] dark:border-white/[.08]">
         {TABS.map((t) => {
           const Icon = t.icon;
           return (
@@ -680,7 +689,13 @@ function JeuContent() {
             onGuildClick={goToGuild}
           />
         )}
-        {tab === "croyances" && <CroyancesTab />}
+        {tab === "croyances" && (
+          <CroyancesTab onCharacterClick={goToCharacter} />
+        )}
+        {tab === "domaines" && <DomainesTab onGuildClick={goToGuild} />}
+        {tab === "geographie" && <GeographieTab />}
+        {tab === "armees" && <ArmeesTab onGuildClick={goToGuild} />}
+        {tab === "navires" && <NaviresTab onGuildClick={goToGuild} />}
         {tab === "sabliers" &&
           (sablierSummary ? (
             <SabliersTab

@@ -55,10 +55,15 @@ const EVENT_REGISTRATION_SYNC_FREQUENCY_KEY =
   "event_registration_sync_frequency";
 const EVENT_REGISTRATION_LAST_SYNCED_KEY =
   "event_registration_sync_last_synced_at";
+const GAME_DATA_SYNC_FREQUENCY_KEY = "game_data_sync_frequency";
+const GAME_DATA_LAST_SYNCED_KEY = "game_data_last_synced_at";
 
-async function getSyncFrequency(key: string): Promise<SyncFrequency> {
+async function getSyncFrequency(
+  key: string,
+  fallback: SyncFrequency = "weekly",
+): Promise<SyncFrequency> {
   const value = await getAppSettingValue(key);
-  return (value as SyncFrequency | null) ?? "weekly";
+  return (value as SyncFrequency | null) ?? fallback;
 }
 
 async function setSyncFrequency(
@@ -141,4 +146,18 @@ export function getEventLastSyncedAt(): Promise<string | null> {
 
 export function getEventRegistrationLastSyncedAt(): Promise<string | null> {
   return getAppSettingValue(EVENT_REGISTRATION_LAST_SYNCED_KEY);
+}
+
+export function getGameDataSyncFrequency(): Promise<SyncFrequency> {
+  return getSyncFrequency(GAME_DATA_SYNC_FREQUENCY_KEY, "daily");
+}
+
+export function setGameDataSyncFrequency(
+  frequency: SyncFrequency,
+): Promise<void> {
+  return setSyncFrequency(GAME_DATA_SYNC_FREQUENCY_KEY, frequency);
+}
+
+export function getGameDataLastSyncedAt(): Promise<string | null> {
+  return getAppSettingValue(GAME_DATA_LAST_SYNCED_KEY);
 }
