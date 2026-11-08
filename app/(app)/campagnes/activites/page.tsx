@@ -112,6 +112,7 @@ import {
   type ChapterObjectiveInput,
 } from "@/lib/activity-chapters";
 import {
+  activityFrontColors,
   FRONT_COLOR_STYLES,
   FRONT_COLORS,
   getActivityFrontAssignments,
@@ -185,9 +186,30 @@ function ActivityModal({
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [date, setDate] = useState(initial?.date ?? "");
-  const [numberOfFronts, setNumberOfFronts] = useState(
-    String(initial?.number_of_fronts ?? 1),
+  const [frontColors, setFrontColors] = useState<FrontColor[]>(() =>
+    initial ? activityFrontColors(initial) : [FRONT_COLORS[0]],
   );
+  const setNumberOfFronts = (value: string) => {
+    const count = Math.max(
+      1,
+      Math.min(parseInt(value, 10) || 1, FRONT_COLORS.length),
+    );
+    setFrontColors((prev) => {
+      if (count <= prev.length) return prev.slice(0, count);
+      const extra = FRONT_COLORS.filter((c) => !prev.includes(c)).slice(
+        0,
+        count - prev.length,
+      );
+      return FRONT_COLORS.filter((c) => prev.includes(c) || extra.includes(c));
+    });
+  };
+  const toggleFrontColor = (color: FrontColor) => {
+    setFrontColors((prev) => {
+      if (prev.includes(color))
+        return prev.length > 1 ? prev.filter((c) => c !== color) : prev;
+      return FRONT_COLORS.filter((c) => prev.includes(c) || c === color);
+    });
+  };
   const [participantsPerFront, setParticipantsPerFront] = useState(
     String(initial?.participants_per_front ?? 1),
   );
@@ -240,7 +262,8 @@ function ActivityModal({
     const payload: ActivityInput = {
       name,
       date,
-      number_of_fronts: parseInt(numberOfFronts, 10),
+      number_of_fronts: frontColors.length,
+      front_colors: frontColors,
       participants_per_front: parseInt(participantsPerFront, 10),
       non_participants_enabled: nonParticipantsEnabled,
       non_participants_max: nonParticipantsEnabled
@@ -297,15 +320,41 @@ function ActivityModal({
         />
         <label className="flex items-center justify-between gap-2 text-sm text-foreground/70">
           Nombre de fronts
-          <input
-            type="number"
-            min={1}
-            required
-            value={numberOfFronts}
+          <select
+            value={frontColors.length}
             onChange={(e) => setNumberOfFronts(e.target.value)}
             className="w-24 rounded border border-black/[.08] bg-white px-3 py-2 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800"
-          />
+          >
+            {FRONT_COLORS.map((_, index) => (
+              <option key={index} value={index + 1}>
+                {index + 1}
+              </option>
+            ))}
+          </select>
         </label>
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm text-foreground/70">Couleurs des fronts</span>
+          <div className="flex flex-wrap gap-1.5">
+            {FRONT_COLORS.map((color) => {
+              const selected = frontColors.includes(color);
+              return (
+                <button
+                  key={color}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => toggleFrontColor(color)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-opacity ${FRONT_COLOR_STYLES[color]} ${
+                    selected
+                      ? "ring-2 ring-primary ring-offset-1 dark:ring-offset-zinc-900"
+                      : "opacity-40 hover:opacity-70"
+                  }`}
+                >
+                  {color}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <label className="flex items-center justify-between gap-2 text-sm text-foreground/70">
           Participants par front
           <input
@@ -640,10 +689,7 @@ function ActivityFrontsModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const availableColors = FRONT_COLORS.slice(
-    0,
-    Math.max(1, Math.min(activity.number_of_fronts, FRONT_COLORS.length)),
-  );
+  const availableColors = activityFrontColors(activity);
 
   useEffect(() => {
     Promise.all([listGuilds(), getActivityFrontAssignments(activity.id)])

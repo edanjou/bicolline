@@ -3,7 +3,7 @@
 import { Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import {
-  FRONT_COLORS,
+  activityFrontColors,
   FRONT_COLOR_STYLES,
   type FrontColor,
 } from "@/lib/activity-fronts";
@@ -18,6 +18,8 @@ type ActivityLike = {
   id: string;
   name: string;
   weapon_master_count: number | null;
+  number_of_fronts: number;
+  front_colors: string[] | null;
 };
 
 const pillClassName = (active: boolean) =>
@@ -255,7 +257,7 @@ export default function WeaponMasterTeamPanel({
                   className="rounded border border-black/[.08] bg-white px-2 py-1 text-xs text-foreground disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-800"
                 >
                   <option value="">Front —</option>
-                  {FRONT_COLORS.map((color) => (
+                  {activityFrontColors(activity).map((color) => (
                     <option key={color} value={color}>
                       {color}
                     </option>

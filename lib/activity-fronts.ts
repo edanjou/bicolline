@@ -24,6 +24,23 @@ export const FRONT_COLOR_STYLES: Record<FrontColor, string> = {
     "bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 border border-black/[.08] dark:border-white/[.145]",
 };
 
+export function isFrontColor(value: string): value is FrontColor {
+  return (FRONT_COLORS as readonly string[]).includes(value);
+}
+
+export function activityFrontColors(activity: {
+  number_of_fronts: number;
+  front_colors?: string[] | null;
+}): FrontColor[] {
+  const selected = (activity.front_colors ?? []).filter(isFrontColor);
+  if (selected.length > 0)
+    return FRONT_COLORS.filter((color) => selected.includes(color));
+  return FRONT_COLORS.slice(
+    0,
+    Math.max(1, Math.min(activity.number_of_fronts, FRONT_COLORS.length)),
+  );
+}
+
 export type FrontGuild = {
   external_id: number;
   name: string;

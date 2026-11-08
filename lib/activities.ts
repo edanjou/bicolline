@@ -43,6 +43,7 @@ export type Activity = {
   name: string;
   date: string;
   number_of_fronts: number;
+  front_colors: string[] | null;
   participants_per_front: number;
   created_at: string;
 } & ActivityDetails &
@@ -54,6 +55,7 @@ export type ActivityInput = {
   name: string;
   date: string;
   number_of_fronts: number;
+  front_colors: string[];
   participants_per_front: number;
 } & ActivityStaffing;
 
