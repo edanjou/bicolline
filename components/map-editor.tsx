@@ -162,7 +162,14 @@ export type MapEditorData = {
   textShapes: TextShape[];
   showGrid?: boolean;
   showCompass?: boolean;
+  compassPosition?: CompassPosition;
 };
+
+export type CompassPosition =
+  | "top-right"
+  | "top-left"
+  | "bottom-left"
+  | "bottom-right";
 
 type DragOrigin = {
   draggedId: string;
@@ -725,14 +732,26 @@ const COMPASS_NATURAL_HEIGHT = 502;
 const COMPASS_CENTER_X = 249.5;
 const COMPASS_CENTER_Y = 250;
 const COMPASS_HEIGHT = 77;
+const COMPASS_POSITIONS: { value: CompassPosition; label: string }[] = [
+  { value: "top-right", label: "En haut à droite" },
+  { value: "top-left", label: "En haut à gauche" },
+  { value: "bottom-left", label: "En bas à gauche" },
+  { value: "bottom-right", label: "En bas à droite" },
+];
+// Écart entre la rose et le logo quand ils partagent le coin inférieur droit.
+const COMPASS_WATERMARK_GAP = 12;
 
 // Rose des vents en coin de carte. La carte de fond est orientée nord en haut :
 // la rose pivote avec le fond pour pointer toujours vers le nord.
 function MapCompassRose({
   displayWidth,
+  displayHeight,
+  position,
   rotation,
 }: {
   displayWidth: number;
+  displayHeight: number;
+  position: CompassPosition;
   rotation: number;
 }) {
   const [image] = useImage(COMPASS_SRC, "anonymous");
@@ -741,11 +760,26 @@ function MapCompassRose({
   const offsetX = COMPASS_CENTER_X * scale;
   const offsetY = COMPASS_CENTER_Y * scale;
 
+  const isRight = position === "top-right" || position === "bottom-right";
+  const isBottom = position === "bottom-left" || position === "bottom-right";
+  // En bas à droite, la rose se place au-dessus du logo Bicolline.
+  const watermarkHeight =
+    WATERMARK_NATURAL_HEIGHT *
+    Math.min(1, WATERMARK_MAX_WIDTH / WATERMARK_NATURAL_WIDTH);
+  const bottomInset =
+    position === "bottom-right"
+      ? WATERMARK_MARGIN + watermarkHeight + COMPASS_WATERMARK_GAP
+      : WATERMARK_MARGIN;
+  const left = isRight ? displayWidth - WATERMARK_MARGIN - width : WATERMARK_MARGIN;
+  const top = isBottom
+    ? displayHeight - bottomInset - COMPASS_HEIGHT
+    : WATERMARK_MARGIN;
+
   return (
     <KonvaImage
       image={image}
-      x={displayWidth - WATERMARK_MARGIN - width + offsetX}
-      y={WATERMARK_MARGIN + offsetY}
+      x={left + offsetX}
+      y={top + offsetY}
       width={width}
       height={COMPASS_HEIGHT}
       offsetX={offsetX}
@@ -1440,6 +1474,8 @@ export default function MapEditor({
   const [canvasHeightInput, setCanvasHeightInput] = useState("800");
   const [showGrid, setShowGrid] = useState(false);
   const [showCompass, setShowCompass] = useState(false);
+  const [compassPosition, setCompassPosition] =
+    useState<CompassPosition>("top-right");
   const [libraryEntries, setLibraryEntries] = useState<MediaEntry[]>([]);
   const [libraryPath, setLibraryPath] = useState(DEFAULT_LIBRARY_FOLDER);
   const [selectedMediaPaths, setSelectedMediaPaths] = useState<string[]>([]);
@@ -2743,6 +2779,7 @@ export default function MapEditor({
       textShapes,
       showGrid,
       showCompass,
+      compassPosition,
     };
   };
 
@@ -2755,6 +2792,7 @@ export default function MapEditor({
     setCanvasSize(data.canvasSize);
     setShowGrid(data.showGrid ?? false);
     setShowCompass(data.showCompass ?? false);
+    setCompassPosition(data.compassPosition ?? "top-right");
     setOverlays((data.overlays ?? []).map((o) => ({ ...o, groupId: o.groupId ?? null })));
     setLines((data.lines ?? []).map((l) => ({ ...l, groupId: l.groupId ?? null })));
     setMapShapes((data.mapShapes ?? []).map((s) => ({ ...s, groupId: s.groupId ?? null })));
@@ -2776,6 +2814,7 @@ export default function MapEditor({
     setCanvasSize({ width: 1200, height: 800 });
     setShowGrid(false);
     setShowCompass(false);
+    setCompassPosition("top-right");
     setOverlays([]);
     setLines([]);
     setMapShapes([]);
@@ -3065,6 +3104,22 @@ export default function MapEditor({
             />
             Rose des vents
           </label>
+          {showCompass && (
+            <select
+              value={compassPosition}
+              onChange={(e) =>
+                setCompassPosition(e.target.value as CompassPosition)
+              }
+              aria-label="Emplacement de la rose des vents"
+              className="rounded border border-black/[.08] bg-white px-2 py-1 dark:border-white/[.145] dark:bg-zinc-900 dark:text-zinc-50"
+            >
+              {COMPASS_POSITIONS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className="flex flex-nowrap items-center gap-2">
@@ -3696,6 +3751,8 @@ export default function MapEditor({
                 {showCompass && (
                   <MapCompassRose
                     displayWidth={displayWidth}
+                    displayHeight={displayHeight}
+                    position={compassPosition}
                     rotation={backgroundTransform?.rotation ?? 0}
                   />
                 )}
