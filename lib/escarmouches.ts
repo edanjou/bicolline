@@ -12,19 +12,23 @@ export type EscarmoucheInput = {
   date: string;
 };
 
-export async function listEscarmouches(): Promise<Escarmouche[]> {
+export async function listEscarmouches(year: number): Promise<Escarmouche[]> {
   const { data, error } = await supabase
     .from("escarmouches")
     .select("*")
+    .eq("year", year)
     .order("date", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
 export async function createEscarmouche(
+  year: number,
   input: EscarmoucheInput,
 ): Promise<void> {
-  const { error } = await supabase.from("escarmouches").insert(input);
+  const { error } = await supabase
+    .from("escarmouches")
+    .insert({ ...input, year });
   if (error) throw error;
 }
 

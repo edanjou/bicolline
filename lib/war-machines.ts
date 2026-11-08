@@ -24,13 +24,13 @@ export type WarMachine = {
   created_at: string;
 };
 
-const SELECT =
-  "id, name, machine_type, owner, description, status, created_at";
+const SELECT = "id, name, machine_type, owner, description, status, created_at";
 
-export async function listWarMachines(): Promise<WarMachine[]> {
+export async function listWarMachines(year: number): Promise<WarMachine[]> {
   const { data, error } = await supabase
     .from("war_machines")
     .select(SELECT)
+    .eq("year", year)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -44,11 +44,12 @@ export type WarMachineInput = {
 };
 
 export async function createWarMachine(
+  year: number,
   input: WarMachineInput,
 ): Promise<WarMachine> {
   const { data, error } = await supabase
     .from("war_machines")
-    .insert({ ...input, status: "en_attente" })
+    .insert({ ...input, year, status: "en_attente" })
     .select(SELECT)
     .single();
   if (error) throw error;

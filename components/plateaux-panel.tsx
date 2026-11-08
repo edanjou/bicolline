@@ -1,6 +1,15 @@
 "use client";
 
-import { AlertTriangle, Feather, Megaphone, Plus, RotateCcw, Settings, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Feather,
+  Megaphone,
+  Plus,
+  RotateCcw,
+  Settings,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import {
   listEventCoordinations,
@@ -25,6 +34,7 @@ import {
   type ReservationInput,
 } from "@/lib/plateau-reservations";
 import { getOwnProfile } from "@/lib/profile";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const inputClassName =
   "rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800";
@@ -39,7 +49,9 @@ function formatDate(date: string): string {
   const day = d.getDate();
   const month = d.toLocaleDateString("fr-FR", { month: "long" });
   const year = d.getFullYear();
-  const weekday = capitalize(d.toLocaleDateString("fr-FR", { weekday: "long" }));
+  const weekday = capitalize(
+    d.toLocaleDateString("fr-FR", { weekday: "long" }),
+  );
   return `${day} ${month} ${year} - ${weekday}`;
 }
 
@@ -117,9 +129,7 @@ function PlateauManager({
         className="flex max-h-[85vh] w-full max-w-md flex-col gap-3 overflow-y-auto rounded-2xl bg-white p-6 shadow-lg dark:bg-zinc-900"
       >
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-foreground">
-            Gérer les plateaux
-          </h2>
+          <h2 className="font-semibold text-foreground">Gérer les plateaux</h2>
           <button
             type="button"
             onClick={onClose}
@@ -161,9 +171,7 @@ function PlateauManager({
                   className={`${inputClassName} flex-1`}
                 />
               ) : (
-                <span className="flex-1 text-sm text-foreground">
-                  {p.name}
-                </span>
+                <span className="flex-1 text-sm text-foreground">{p.name}</span>
               )}
               {editingId !== p.id && (
                 <>
@@ -458,6 +466,7 @@ export default function PlateauxPanel({
   coordinationKey: string;
   moduleKey: string;
 }) {
+  const gbYear = useGbYear();
   const [plateaux, setPlateaux] = useState<Plateau[]>([]);
   const [reservations, setReservations] = useState<PlateauReservation[]>([]);
   const [eventCoordinations, setEventCoordinations] = useState<
@@ -472,14 +481,16 @@ export default function PlateauxPanel({
   const [filterDate, setFilterDate] = useState("");
   const [filterCoordination, setFilterCoordination] = useState("");
   const [modalState, setModalState] = useState<
-    { mode: "create" } | { mode: "edit"; reservation: PlateauReservation } | null
+    | { mode: "create" }
+    | { mode: "edit"; reservation: PlateauReservation }
+    | null
   >(null);
 
   const fetchAll = async () => {
     setIsLoading(true);
     const [p, r, c] = await Promise.all([
       listPlateaux(coordinationKey),
-      listReservations(coordinationKey),
+      listReservations(coordinationKey, gbYear),
       listEventCoordinations(),
     ]);
     setPlateaux(p);
@@ -564,7 +575,8 @@ export default function PlateauxPanel({
   };
 
   const handleSubmitReservation = async (input: ReservationInput) => {
-    const excludeId = modalState?.mode === "edit" ? modalState.reservation.id : null;
+    const excludeId =
+      modalState?.mode === "edit" ? modalState.reservation.id : null;
     const conflicts = checkConflicts(input, excludeId);
     if (conflicts.length > 0) {
       const names = conflicts.map((c) => `« ${c.title} »`).join(", ");
@@ -584,7 +596,7 @@ export default function PlateauxPanel({
           ),
         );
       } else {
-        const created = await createReservation(coordinationKey, input);
+        const created = await createReservation(coordinationKey, gbYear, input);
         setReservations((prev) => [...prev, created]);
       }
       setModalState(null);
@@ -627,10 +639,7 @@ export default function PlateauxPanel({
   const filtered = sorted.filter((r) => {
     if (filterPlateauId && r.plateau_id !== filterPlateauId) return false;
     if (filterDate && r.date !== filterDate) return false;
-    if (
-      filterCoordination &&
-      r.event_coordination_id !== filterCoordination
-    )
+    if (filterCoordination && r.event_coordination_id !== filterCoordination)
       return false;
     return true;
   });
@@ -639,7 +648,8 @@ export default function PlateauxPanel({
     new Set(reservations.map((r) => r.date)),
   ).sort();
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   return (
     <div className="flex flex-col gap-4">

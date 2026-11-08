@@ -18,6 +18,7 @@ import {
   type PrintRequestInput,
 } from "@/lib/print-requests";
 import { getOwnProfile } from "@/lib/profile";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const inputClassName =
   "rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800";
@@ -240,7 +241,10 @@ function PrintRequestModal({
                   type="checkbox"
                   checked={!!form[o.key]}
                   onChange={(e) =>
-                    set(o.key, e.target.checked as PrintRequestInput[typeof o.key])
+                    set(
+                      o.key,
+                      e.target.checked as PrintRequestInput[typeof o.key],
+                    )
                   }
                   className="h-4 w-4 accent-primary"
                 />
@@ -256,7 +260,10 @@ function PrintRequestModal({
                   type="checkbox"
                   checked={!!form[o.key]}
                   onChange={(e) =>
-                    set(o.key, e.target.checked as PrintRequestInput[typeof o.key])
+                    set(
+                      o.key,
+                      e.target.checked as PrintRequestInput[typeof o.key],
+                    )
                   }
                   className="h-4 w-4 accent-primary"
                 />
@@ -272,7 +279,10 @@ function PrintRequestModal({
                   type="checkbox"
                   checked={!!form[o.key]}
                   onChange={(e) =>
-                    set(o.key, e.target.checked as PrintRequestInput[typeof o.key])
+                    set(
+                      o.key,
+                      e.target.checked as PrintRequestInput[typeof o.key],
+                    )
                   }
                   className="h-4 w-4 accent-primary"
                 />
@@ -352,6 +362,7 @@ export default function PrintRequestsPanel({
   coordinationKey: string;
   moduleKey: string;
 }) {
+  const gbYear = useGbYear();
   const [requests, setRequests] = useState<PrintRequest[]>([]);
   const [eventCoordinations, setEventCoordinations] = useState<
     EventCoordination[]
@@ -365,7 +376,7 @@ export default function PrintRequestsPanel({
   const fetchAll = async () => {
     setIsLoading(true);
     const [r, c] = await Promise.all([
-      listPrintRequests(coordinationKey),
+      listPrintRequests(coordinationKey, gbYear),
       listEventCoordinations(),
     ]);
     setRequests(r);
@@ -398,7 +409,11 @@ export default function PrintRequestsPanel({
           ),
         );
       } else {
-        const created = await createPrintRequest(coordinationKey, input);
+        const created = await createPrintRequest(
+          coordinationKey,
+          gbYear,
+          input,
+        );
         setRequests((prev) => [...prev, created]);
       }
       setModalState(null);
@@ -433,7 +448,8 @@ export default function PrintRequestsPanel({
     }
   };
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -465,7 +481,9 @@ export default function PrintRequestsPanel({
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
               <tr className="border-b border-black/[.08] dark:border-white/[.145]">
-                <th className="px-2 py-2 font-medium">Titre du fichier/document</th>
+                <th className="px-2 py-2 font-medium">
+                  Titre du fichier/document
+                </th>
                 <th className="px-2 py-2 font-medium">Lien</th>
                 <th className="px-2 py-2 font-medium">Copies</th>
                 <th className="px-2 py-2 font-medium">Format</th>

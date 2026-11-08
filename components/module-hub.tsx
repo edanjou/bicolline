@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import { glofters } from "@/app/fonts/glofters";
 import Breadcrumb from "@/components/breadcrumb";
 import { getModuleAccessLevels, type ModuleAccessLevel } from "@/lib/features";
+import { canonicalHref } from "@/lib/gb-years";
 import { orderItems } from "@/lib/order-items";
 import { getOwnProfile, type Profile } from "@/lib/profile";
 import { supabase } from "@/lib/supabase";
@@ -108,8 +109,14 @@ export function SortableHubCard({
   suppressClickRef: React.MutableRefObject<boolean>;
 }) {
   const router = useRouter();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: item.href });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.href });
   const Icon = item.icon;
 
   return (
@@ -219,13 +226,17 @@ export default function ModuleHub({
       const isAdmin = p?.role === "admin";
       const available = items.filter(
         (item) =>
-          !item.disabled && !item.pinned && isItemAllowed(item, levels, isAdmin),
+          !item.disabled &&
+          !item.pinned &&
+          isItemAllowed(item, levels, isAdmin),
       );
       setActiveItems(orderItems(available, p?.[orderColumn] ?? null));
       setPinnedItems(
         items.filter(
           (item) =>
-            item.pinned && !item.disabled && isItemAllowed(item, levels, isAdmin),
+            item.pinned &&
+            !item.disabled &&
+            isItemAllowed(item, levels, isAdmin),
         ),
       );
       setIsLoading(false);
@@ -256,7 +267,9 @@ export default function ModuleHub({
       if (profile) {
         supabase
           .from("profiles")
-          .update({ [orderColumn]: next.map((item) => item.href) })
+          .update({
+            [orderColumn]: next.map((item) => canonicalHref(item.href)),
+          })
           .eq("id", profile.id)
           .then();
       }
@@ -269,7 +282,9 @@ export default function ModuleHub({
       <h1 className={`${glofters.className} text-3xl text-foreground`}>
         {title}
       </h1>
-      {subtitle && <p className="mt-1 text-sm text-foreground/60">{subtitle}</p>}
+      {subtitle && (
+        <p className="mt-1 text-sm text-foreground/60">{subtitle}</p>
+      )}
       <Breadcrumb />
 
       {isLoading ? (

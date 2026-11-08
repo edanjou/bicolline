@@ -23,6 +23,7 @@ import {
   type KeyType,
 } from "@/lib/key-types";
 import { getOwnProfile } from "@/lib/profile";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const inputClassName =
   "rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800";
@@ -143,9 +144,7 @@ function KeyTypeManager({
                   className={`${inputClassName} flex-1`}
                 />
               ) : (
-                <span className="flex-1 text-sm text-foreground">
-                  {k.name}
-                </span>
+                <span className="flex-1 text-sm text-foreground">{k.name}</span>
               )}
               {editingId !== k.id && (
                 <>
@@ -234,13 +233,13 @@ function PersonKeysModal({
 }) {
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
-  const [eventCoordinationId, setEventCoordinationId] = useState<
-    string | null
-  >(null);
+  const [eventCoordinationId, setEventCoordinationId] = useState<string | null>(
+    null,
+  );
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [justifications, setJustifications] = useState<
-    Record<string, string>
-  >({});
+  const [justifications, setJustifications] = useState<Record<string, string>>(
+    {},
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleKey = (id: string) =>
@@ -249,8 +248,7 @@ function PersonKeysModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const chosen = keyTypes.filter((k) => selected[k.id]);
-    if ((!lastName.trim() && !firstName.trim()) || chosen.length === 0)
-      return;
+    if ((!lastName.trim() && !firstName.trim()) || chosen.length === 0) return;
     setIsSubmitting(true);
     try {
       await onSubmit(
@@ -391,9 +389,9 @@ function AddKeysToPersonModal({
   ) => Promise<void>;
 }) {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [justifications, setJustifications] = useState<
-    Record<string, string>
-  >({});
+  const [justifications, setJustifications] = useState<Record<string, string>>(
+    {},
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleKey = (id: string) =>
@@ -497,6 +495,7 @@ export default function KeysPanel({
   coordinationKey: string;
   moduleKey: string;
 }) {
+  const gbYear = useGbYear();
   const [keyTypes, setKeyTypes] = useState<KeyType[]>([]);
   const [assignments, setAssignments] = useState<KeyAssignment[]>([]);
   const [eventCoordinations, setEventCoordinations] = useState<
@@ -513,7 +512,7 @@ export default function KeysPanel({
     setIsLoading(true);
     const [k, a, c] = await Promise.all([
       listKeyTypes(coordinationKey),
-      listKeyAssignments(coordinationKey),
+      listKeyAssignments(coordinationKey, gbYear),
       listEventCoordinations(),
     ]);
     setKeyTypes(k);
@@ -580,7 +579,7 @@ export default function KeysPanel({
     try {
       const created = await Promise.all(
         keys.map((k) =>
-          createKeyAssignment(coordinationKey, {
+          createKeyAssignment(coordinationKey, gbYear, {
             key_type_id: k.key_type_id,
             event_coordination_id: person.event_coordination_id,
             last_name: person.last_name,
@@ -604,7 +603,7 @@ export default function KeysPanel({
     try {
       const created = await Promise.all(
         keys.map((k) =>
-          createKeyAssignment(coordinationKey, {
+          createKeyAssignment(coordinationKey, gbYear, {
             key_type_id: k.key_type_id,
             event_coordination_id: group.event_coordination_id,
             last_name: group.last_name,
@@ -711,7 +710,9 @@ export default function KeysPanel({
     const ids = new Set(groupAssignments.map((a) => a.id));
     setAssignments((prev) =>
       prev.map((a) =>
-        ids.has(a.id) ? { ...a, event_coordination_id: eventCoordinationId } : a,
+        ids.has(a.id)
+          ? { ...a, event_coordination_id: eventCoordinationId }
+          : a,
       ),
     );
     if (!canWrite) return;
@@ -754,15 +755,16 @@ export default function KeysPanel({
     );
   })();
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-foreground/60">
           {groups.length} membre{groups.length > 1 ? "s" : ""} —{" "}
-          {assignments.length} clé{assignments.length > 1 ? "s" : ""}{" "}
-          attribuée{assignments.length > 1 ? "s" : ""}
+          {assignments.length} clé{assignments.length > 1 ? "s" : ""} attribuée
+          {assignments.length > 1 ? "s" : ""}
         </p>
         {canWrite && (
           <div className="flex items-center gap-2">
@@ -897,7 +899,11 @@ export default function KeysPanel({
                             value={a.key_type_id}
                             disabled={!canWrite}
                             onChange={(e) =>
-                              handleSelectChange(a, "key_type_id", e.target.value)
+                              handleSelectChange(
+                                a,
+                                "key_type_id",
+                                e.target.value,
+                              )
                             }
                             className={cellInputClassName}
                           >
@@ -922,7 +928,11 @@ export default function KeysPanel({
                             value={a.notes ?? ""}
                             disabled={!canWrite}
                             onChange={(e) =>
-                              handleFieldChange(a, "notes", e.target.value || null)
+                              handleFieldChange(
+                                a,
+                                "notes",
+                                e.target.value || null,
+                              )
                             }
                             onBlur={() => handleFieldSave(a.id)}
                             placeholder="Justification (au besoin)…"

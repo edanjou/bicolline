@@ -11,7 +11,10 @@ import {
   type Bilan,
   type BilanSectionsInput,
 } from "@/lib/bilans";
-import { listAllDepartmentSlots, type DepartmentSlot } from "@/lib/department-slots";
+import {
+  listAllDepartmentSlots,
+  type DepartmentSlot,
+} from "@/lib/department-slots";
 import { listEscarmouches, type Escarmouche } from "@/lib/escarmouches";
 import { getModuleAccessLevels } from "@/lib/features";
 import {
@@ -155,9 +158,7 @@ export default function BilanPanel({
   >([]);
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
   const [slots, setSlots] = useState<DepartmentSlot[]>([]);
-  const [assignments, setAssignments] = useState<VolunteerSlotAssignment[]>(
-    [],
-  );
+  const [assignments, setAssignments] = useState<VolunteerSlotAssignment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [canWrite, setCanWrite] = useState(true);
@@ -190,8 +191,8 @@ export default function BilanPanel({
         assignmentList,
       ] = await Promise.all([
         getOrCreateBilan(coordinationKey, year),
-        listEscarmouches(),
-        listHomologationSchedules(),
+        listEscarmouches(year),
+        listHomologationSchedules(year),
         listGrandeBatailleChapters(coordinationKey, year),
         listAllDepartmentSlots(coordinationKey, year),
         listAssignmentsForVolunteers(volunteerList.map((v) => v.id)),
@@ -301,9 +302,7 @@ export default function BilanPanel({
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-foreground">
-          Bilan {year}
-        </h2>
+        <h2 className="text-xl font-semibold text-foreground">Bilan {year}</h2>
         <div className="flex items-center gap-3">
           {isDirty && (
             <span className="text-sm text-amber-600 dark:text-amber-400">
@@ -333,7 +332,11 @@ export default function BilanPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox icon={Axe} label="Escarmouches" value={String(escarmouchesCount)} />
+        <StatBox
+          icon={Axe}
+          label="Escarmouches"
+          value={String(escarmouchesCount)}
+        />
         <StatBox
           icon={BadgeCheck}
           label="Homologations"

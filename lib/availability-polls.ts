@@ -87,12 +87,15 @@ export function sortSlots<T extends AvailabilitySlot | SlotDraft>(
   );
 }
 
-export async function listPolls(): Promise<AvailabilityPollSummary[]> {
+export async function listPolls(
+  year: number,
+): Promise<AvailabilityPollSummary[]> {
   const { data, error } = await supabase
     .from("availability_polls")
     .select(
       "*, availability_poll_slots(count), availability_poll_responses(count)",
     )
+    .eq("year", year)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map(
@@ -197,12 +200,13 @@ async function syncSlots(pollId: string, slots: SlotDraft[]): Promise<void> {
 }
 
 export async function createPoll(
+  year: number,
   input: PollInput,
   slots: SlotDraft[],
 ): Promise<string> {
   const { data, error } = await supabase
     .from("availability_polls")
-    .insert(input)
+    .insert({ ...input, year })
     .select("id")
     .single();
   if (error) throw error;

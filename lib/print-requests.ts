@@ -31,11 +31,13 @@ const PRINT_REQUEST_SELECT =
 
 export async function listPrintRequests(
   coordinationKey: string,
+  year: number,
 ): Promise<PrintRequest[]> {
   const { data, error } = await supabase
     .from("print_requests")
     .select(PRINT_REQUEST_SELECT)
     .eq("coordination_key", coordinationKey)
+    .eq("year", year)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -63,11 +65,12 @@ export type PrintRequestInput = {
 
 export async function createPrintRequest(
   coordinationKey: string,
+  year: number,
   input: PrintRequestInput,
 ): Promise<PrintRequest> {
   const { data, error } = await supabase
     .from("print_requests")
-    .insert({ coordination_key: coordinationKey, ...input })
+    .insert({ coordination_key: coordinationKey, year, ...input })
     .select(PRINT_REQUEST_SELECT)
     .single();
   if (error) throw error;
@@ -86,9 +89,6 @@ export async function updatePrintRequest(
 }
 
 export async function deletePrintRequest(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("print_requests")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("print_requests").delete().eq("id", id);
   if (error) throw error;
 }

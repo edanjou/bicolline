@@ -100,10 +100,13 @@ export type TotalStanding = {
 const TOURNAMENT_SELECT =
   "id, name, pool_count, pool_scenarios, final_scenario, qualifiers_count, status, created_at";
 
-export async function listTournaments(): Promise<TaktikaTournament[]> {
+export async function listTournaments(
+  year: number,
+): Promise<TaktikaTournament[]> {
   const { data, error } = await supabase
     .from("taktika_tournaments")
     .select(TOURNAMENT_SELECT)
+    .eq("year", year)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return data ?? [];
@@ -185,6 +188,7 @@ export async function regeneratePoolMatches(
 }
 
 export async function createTournament(
+  year: number,
   name: string,
   teamIds: string[],
   poolCount: number,
@@ -196,6 +200,7 @@ export async function createTournament(
     .from("taktika_tournaments")
     .insert({
       name,
+      year,
       pool_count: poolCount,
       pool_scenarios: poolScenarios,
       final_scenario: finalScenario,
@@ -388,7 +393,12 @@ export function computeTotalStandings(
   const totals = new Map<string, TotalStanding>();
   for (let pool = 0; pool < poolCount; pool++) {
     for (const scenario of poolScenarios) {
-      const standings = computeScenarioStandings(teams, matches, pool, scenario);
+      const standings = computeScenarioStandings(
+        teams,
+        matches,
+        pool,
+        scenario,
+      );
       for (const s of standings) {
         const existing = totals.get(s.team_id) ?? {
           team_id: s.team_id,

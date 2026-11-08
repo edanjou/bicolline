@@ -20,6 +20,7 @@ import {
 } from "@/lib/event-coordinations";
 import { getModuleAccessLevels } from "@/lib/features";
 import { getOwnProfile } from "@/lib/profile";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const cellInputClassName =
   "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-foreground hover:border-black/[.08] focus:border-black/[.15] focus:bg-white focus:outline-none dark:hover:border-white/[.145] dark:focus:border-white/[.25] dark:focus:bg-zinc-800";
@@ -32,7 +33,7 @@ const STATUS_STYLES: Record<CostumeStatus, string> = {
   "À acheter": "bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-400",
   "À réparer/modifier":
     "bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-400",
-  "Préparé":
+  Préparé:
     "bg-green-100 text-green-800 dark:bg-green-950/60 dark:text-green-400",
   Autre: "bg-gray-100 text-gray-700 dark:bg-gray-800/60 dark:text-gray-300",
   "N/A": "bg-gray-100 text-gray-500 dark:bg-gray-800/60 dark:text-gray-400",
@@ -83,6 +84,7 @@ export default function CostumesPanel({
   coordinationKey: string;
   moduleKey: string;
 }) {
+  const gbYear = useGbYear();
   const [items, setItems] = useState<CostumeItem[]>([]);
   const [eventCoordinations, setEventCoordinations] = useState<
     EventCoordination[]
@@ -93,7 +95,7 @@ export default function CostumesPanel({
   const fetchAll = async () => {
     setIsLoading(true);
     const [i, c] = await Promise.all([
-      listCostumes(coordinationKey),
+      listCostumes(coordinationKey, gbYear),
       listEventCoordinations(),
     ]);
     setItems(i);
@@ -116,7 +118,7 @@ export default function CostumesPanel({
   const handleAddRow = async () => {
     if (!canWrite) return;
     try {
-      const created = await createCostume(coordinationKey, EMPTY_FORM);
+      const created = await createCostume(coordinationKey, gbYear, EMPTY_FORM);
       setItems((prev) => [created, ...prev]);
     } catch {
       alert("Échec de la création.");
@@ -173,7 +175,8 @@ export default function CostumesPanel({
     }
   };
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -194,7 +197,9 @@ export default function CostumesPanel({
       </div>
 
       {items.length === 0 && (
-        <p className="text-sm text-foreground/60">Aucun item pour l&apos;instant.</p>
+        <p className="text-sm text-foreground/60">
+          Aucun item pour l&apos;instant.
+        </p>
       )}
 
       {items.length > 0 && (
@@ -202,18 +207,24 @@ export default function CostumesPanel({
           <table className="w-full text-left text-xs">
             <thead className="sticky top-0 z-10 bg-white dark:bg-zinc-900">
               <tr className="border-b border-black/[.08] dark:border-white/[.145]">
-                <th className="px-2 py-2 font-medium">Description de l&apos;item</th>
+                <th className="px-2 py-2 font-medium">
+                  Description de l&apos;item
+                </th>
                 <th className="px-2 py-2 font-medium">Quantité</th>
                 <th className="px-2 py-2 font-medium">Statut</th>
                 <th className="px-2 py-2 font-medium">Sexe</th>
                 <th className="px-2 py-2 font-medium">Grandeur</th>
                 <th className="px-2 py-2 font-medium">Matériaux</th>
                 <th className="px-2 py-2 font-medium">Échéancier</th>
-                <th className="px-2 py-2 font-medium">Lieu d&apos;entreposage</th>
+                <th className="px-2 py-2 font-medium">
+                  Lieu d&apos;entreposage
+                </th>
                 <th className="px-2 py-2 font-medium">Emplacement requis</th>
                 <th className="px-2 py-2 font-medium">Moment requis</th>
                 <th className="px-2 py-2 font-medium">Demandé par</th>
-                <th className="px-2 py-2 font-medium">Département / Coordination</th>
+                <th className="px-2 py-2 font-medium">
+                  Département / Coordination
+                </th>
                 <th className="px-2 py-2 font-medium">Sous-équipe / rôle</th>
                 {canWrite && <th className="px-2 py-2 font-medium" />}
               </tr>
@@ -377,11 +388,7 @@ export default function CostumesPanel({
                       value={item.requested_by}
                       disabled={!canWrite}
                       onChange={(e) =>
-                        handleFieldChange(
-                          item,
-                          "requested_by",
-                          e.target.value,
-                        )
+                        handleFieldChange(item, "requested_by", e.target.value)
                       }
                       onBlur={() => handleFieldSave(item.id)}
                       className={`${cellInputClassName} w-28`}

@@ -16,11 +16,13 @@ const KEY_ASSIGNMENT_SELECT =
 
 export async function listKeyAssignments(
   coordinationKey: string,
+  year: number,
 ): Promise<KeyAssignment[]> {
   const { data, error } = await supabase
     .from("key_assignments")
     .select(KEY_ASSIGNMENT_SELECT)
-    .eq("coordination_key", coordinationKey);
+    .eq("coordination_key", coordinationKey)
+    .eq("year", year);
   if (error) throw error;
   return data ?? [];
 }
@@ -36,11 +38,12 @@ export type KeyAssignmentInput = {
 
 export async function createKeyAssignment(
   coordinationKey: string,
+  year: number,
   input: KeyAssignmentInput,
 ): Promise<KeyAssignment> {
   const { data, error } = await supabase
     .from("key_assignments")
-    .insert({ coordination_key: coordinationKey, ...input })
+    .insert({ coordination_key: coordinationKey, year, ...input })
     .select(KEY_ASSIGNMENT_SELECT)
     .single();
   if (error) throw error;

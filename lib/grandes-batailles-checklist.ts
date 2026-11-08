@@ -30,8 +30,7 @@ export type ChecklistType = (typeof CHECKLIST_TYPES)[number];
 
 export const CHECKLIST_TYPE_STYLES: Record<ChecklistType, string> = {
   Suivi: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-300",
-  Achat:
-    "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+  Achat: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
 };
 
 export const CHECKLIST_TYPE_UNSET_STYLE =
@@ -51,30 +50,39 @@ export type ChecklistItem = {
 const CHECKLIST_ITEM_SELECT =
   "id, label, done, position, assigned_to, task_type, list_key, prompt";
 
+// Les listes de la Grande Bataille sont propres à une édition (year) ; les
+// autres (ex. « systeme ») n'ont pas d'année.
 export async function listChecklistItems(
   listKey: string,
+  year: number | null,
 ): Promise<ChecklistItem[]> {
-  const { data, error } = await supabase
+  const query = supabase
     .from("grandes_batailles_checklist")
     .select(CHECKLIST_ITEM_SELECT)
-    .eq("list_key", listKey)
-    .order("position", { ascending: true });
+    .eq("list_key", listKey);
+  const { data, error } = await (
+    year === null ? query.is("year", null) : query.eq("year", year)
+  ).order("position", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
 export async function createChecklistItem(
   listKey: string,
+  year: number | null,
   label: string,
 ): Promise<ChecklistItem> {
-  const { count } = await supabase
+  const countQuery = supabase
     .from("grandes_batailles_checklist")
     .select("id", { count: "exact", head: true })
     .eq("list_key", listKey);
+  const { count } = await (year === null
+    ? countQuery.is("year", null)
+    : countQuery.eq("year", year));
 
   const { data, error } = await supabase
     .from("grandes_batailles_checklist")
-    .insert({ list_key: listKey, label, position: count ?? 0 })
+    .insert({ list_key: listKey, year, label, position: count ?? 0 })
     .select(CHECKLIST_ITEM_SELECT)
     .single();
   if (error) throw error;
@@ -122,11 +130,15 @@ export async function reorderChecklistItems(
 
 export async function deleteCompletedChecklistItems(
   listKey: string,
+  year: number | null,
 ): Promise<void> {
-  const { error } = await supabase
+  const query = supabase
     .from("grandes_batailles_checklist")
     .delete()
     .eq("list_key", listKey)
     .eq("done", true);
+  const { error } = await (year === null
+    ? query.is("year", null)
+    : query.eq("year", year));
   if (error) throw error;
 }

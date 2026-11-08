@@ -12,23 +12,25 @@ export type HomologationScheduleInput = {
   date: string;
 };
 
-export async function listHomologationSchedules(): Promise<
-  HomologationSchedule[]
-> {
+export async function listHomologationSchedules(
+  year: number,
+): Promise<HomologationSchedule[]> {
   const { data, error } = await supabase
     .from("homologation_schedules")
     .select("*")
+    .eq("year", year)
     .order("date", { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
 
 export async function createHomologationSchedule(
+  year: number,
   input: HomologationScheduleInput,
 ): Promise<HomologationSchedule> {
   const { data, error } = await supabase
     .from("homologation_schedules")
-    .insert(input)
+    .insert({ ...input, year })
     .select("*")
     .single();
   if (error) throw error;

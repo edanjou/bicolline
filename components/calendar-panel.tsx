@@ -21,6 +21,7 @@ import {
 } from "@/lib/calendar-entries";
 import { getModuleAccessLevels } from "@/lib/features";
 import { getOwnProfile } from "@/lib/profile";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const inputClassName =
   "rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800";
@@ -28,7 +29,7 @@ const cellInputClassName =
   "w-full rounded border border-transparent bg-transparent px-1 py-0.5 text-xs text-foreground hover:border-black/[.08] focus:border-black/[.15] focus:bg-white focus:outline-none dark:hover:border-white/[.145] dark:focus:border-white/[.25] dark:focus:bg-zinc-800";
 
 const TYPE_STYLES: Record<CalendarEntryType, string> = {
-  "Duché": "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400",
+  Duché: "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-400",
   Livrables:
     "bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-400",
   Publications:
@@ -104,6 +105,7 @@ export default function CalendarPanel({
   coordinationKey: string;
   moduleKey: string;
 }) {
+  const gbYear = useGbYear();
   const [entries, setEntries] = useState<CalendarEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [canWrite, setCanWrite] = useState(false);
@@ -118,7 +120,7 @@ export default function CalendarPanel({
 
   const fetchAll = async () => {
     setIsLoading(true);
-    setEntries(await listCalendarEntries(coordinationKey));
+    setEntries(await listCalendarEntries(coordinationKey, gbYear));
     setIsLoading(false);
   };
 
@@ -137,7 +139,11 @@ export default function CalendarPanel({
   const handleAddRow = async () => {
     if (!canWrite) return;
     try {
-      const created = await createCalendarEntry(coordinationKey, EMPTY_FORM);
+      const created = await createCalendarEntry(
+        coordinationKey,
+        gbYear,
+        EMPTY_FORM,
+      );
       setEntries((prev) => [created, ...prev]);
     } catch {
       alert("Échec de la création.");
@@ -206,7 +212,8 @@ export default function CalendarPanel({
         e.description.toLowerCase().includes(q)),
   );
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   return (
     <div className="flex flex-col gap-4">
@@ -370,11 +377,7 @@ export default function CalendarPanel({
                           value={entry.location}
                           disabled={!canWrite}
                           onChange={(e) =>
-                            handleFieldChange(
-                              entry,
-                              "location",
-                              e.target.value,
-                            )
+                            handleFieldChange(entry, "location", e.target.value)
                           }
                           onBlur={() => handleFieldSave(entry.id)}
                           className={`${cellInputClassName} w-28`}
@@ -422,7 +425,8 @@ export default function CalendarPanel({
               type="button"
               onClick={() =>
                 setMonthCursor(
-                  (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+                  (prev) =>
+                    new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
                 )
               }
               aria-label="Mois précédent"
@@ -440,7 +444,8 @@ export default function CalendarPanel({
               type="button"
               onClick={() =>
                 setMonthCursor(
-                  (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+                  (prev) =>
+                    new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
                 )
               }
               aria-label="Mois suivant"

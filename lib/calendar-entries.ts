@@ -1,10 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
 export type CalendarEntryType =
-  | "Duché"
-  | "Livrables"
-  | "Publications"
-  | "Rencontres";
+  "Duché" | "Livrables" | "Publications" | "Rencontres";
 
 export const CALENDAR_ENTRY_TYPES: CalendarEntryType[] = [
   "Duché",
@@ -29,11 +26,13 @@ const CALENDAR_ENTRY_SELECT =
 
 export async function listCalendarEntries(
   coordinationKey: string,
+  year: number,
 ): Promise<CalendarEntry[]> {
   const { data, error } = await supabase
     .from("calendar_entries")
     .select(CALENDAR_ENTRY_SELECT)
     .eq("coordination_key", coordinationKey)
+    .eq("year", year)
     .order("start_date", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -50,11 +49,12 @@ export type CalendarEntryInput = {
 
 export async function createCalendarEntry(
   coordinationKey: string,
+  year: number,
   input: CalendarEntryInput,
 ): Promise<CalendarEntry> {
   const { data, error } = await supabase
     .from("calendar_entries")
-    .insert({ coordination_key: coordinationKey, ...input })
+    .insert({ coordination_key: coordinationKey, year, ...input })
     .select(CALENDAR_ENTRY_SELECT)
     .single();
   if (error) throw error;

@@ -8,22 +8,26 @@ export type Tournament = {
   created_at: string;
 };
 
-export async function listTournaments(): Promise<Tournament[]> {
+export async function listTournaments(year: number): Promise<Tournament[]> {
   const { data, error } = await supabase
     .from("tournaments")
     .select("id, name, date, rules, created_at")
+    .eq("year", year)
     .order("date", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function createTournament(input: {
-  name: string;
-  date: string | null;
-}): Promise<Tournament> {
+export async function createTournament(
+  year: number,
+  input: {
+    name: string;
+    date: string | null;
+  },
+): Promise<Tournament> {
   const { data, error } = await supabase
     .from("tournaments")
-    .insert(input)
+    .insert({ ...input, year })
     .select("id, name, date, rules, created_at")
     .single();
   if (error) throw error;

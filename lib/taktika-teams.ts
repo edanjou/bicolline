@@ -51,19 +51,23 @@ function normalizeMember(row: RawTeamMember): TaktikaTeamMember {
 const MEMBER_SELECT =
   "id, team_id, character_id, role, created_at, characters(name, player_name, player_email)";
 
-export async function listTeams(): Promise<TaktikaTeam[]> {
+export async function listTeams(year: number): Promise<TaktikaTeam[]> {
   const { data, error } = await supabase
     .from("taktika_teams")
     .select("id, name, created_at")
+    .eq("year", year)
     .order("created_at", { ascending: true });
   if (error) throw error;
   return data ?? [];
 }
 
-export async function createTeam(name: string): Promise<TaktikaTeam> {
+export async function createTeam(
+  year: number,
+  name: string,
+): Promise<TaktikaTeam> {
   const { data, error } = await supabase
     .from("taktika_teams")
-    .insert({ name })
+    .insert({ name, year })
     .select("id, name, created_at")
     .single();
   if (error) throw error;

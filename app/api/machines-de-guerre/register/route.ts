@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { CURRENT_GB_YEAR } from "@/lib/gb-years";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 const MACHINE_TYPES = ["Canon", "Baliste"];
@@ -16,7 +17,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
 
-  const name = typeof body.name === "string" ? body.name.trim().slice(0, 200) : "";
+  const name =
+    typeof body.name === "string" ? body.name.trim().slice(0, 200) : "";
   const machineType =
     typeof body.machine_type === "string" &&
     MACHINE_TYPES.includes(body.machine_type)
@@ -38,6 +40,7 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
   const { error } = await admin.from("war_machines").insert({
+    year: CURRENT_GB_YEAR,
     name,
     machine_type: machineType,
     owner,

@@ -15,6 +15,7 @@ import {
   type WarMachineInput,
   type WarMachineStatus,
 } from "@/lib/war-machines";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const inputClassName =
   "rounded border border-black/[.08] bg-white px-2 py-1 text-sm text-foreground dark:border-white/[.145] dark:bg-zinc-800";
@@ -155,11 +156,8 @@ function WarMachineCreateModal({
   );
 }
 
-export default function WarMachinesPanel({
-  moduleKey,
-}: {
-  moduleKey: string;
-}) {
+export default function WarMachinesPanel({ moduleKey }: { moduleKey: string }) {
+  const gbYear = useGbYear();
   const [machines, setMachines] = useState<WarMachine[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [canWrite, setCanWrite] = useState(false);
@@ -169,7 +167,7 @@ export default function WarMachinesPanel({
 
   const fetchAll = async () => {
     setIsLoading(true);
-    setMachines(await listWarMachines());
+    setMachines(await listWarMachines(gbYear));
     setIsLoading(false);
   };
 
@@ -183,6 +181,7 @@ export default function WarMachinesPanel({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- static value derived from window, only known client-side
     setPublicUrl(`${window.location.origin}/machines-de-guerre`);
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gbYear is fixed for the page; the [annee] layout remounts it on a year change
   }, [moduleKey]);
 
   const handleCopy = async () => {
@@ -197,7 +196,7 @@ export default function WarMachinesPanel({
 
   const handleCreate = async (input: WarMachineInput) => {
     try {
-      const created = await createWarMachine(input);
+      const created = await createWarMachine(gbYear, input);
       setMachines((prev) => [created, ...prev]);
       setShowCreateModal(false);
     } catch {
@@ -223,8 +222,7 @@ export default function WarMachinesPanel({
 
   const handleDelete = async (machine: WarMachine) => {
     if (!canWrite) return;
-    if (!window.confirm(`Supprimer « ${machine.name} » du registre ?`))
-      return;
+    if (!window.confirm(`Supprimer « ${machine.name} » du registre ?`)) return;
     setMachines((prev) => prev.filter((m) => m.id !== machine.id));
     try {
       await deleteWarMachine(machine.id);
@@ -234,7 +232,8 @@ export default function WarMachinesPanel({
     }
   };
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   return (
     <div className="flex flex-col gap-4">

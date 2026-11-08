@@ -24,11 +24,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, ViewTransition } from "react";
 import { isItemAllowed, type HubItem } from "@/components/module-hub";
 import { UnsavedChangesProvider } from "@/components/unsaved-changes-provider";
-import {
-  getModuleAccessLevels,
-  type ModuleAccessLevel,
-} from "@/lib/features";
+import { getModuleAccessLevels, type ModuleAccessLevel } from "@/lib/features";
 import { hubContextFor, TOP_BAR_ITEMS } from "@/lib/hub-items";
+import { canonicalHref } from "@/lib/gb-years";
 import { orderItems } from "@/lib/order-items";
 import { getOwnProfile, type Profile } from "@/lib/profile";
 import { supabase } from "@/lib/supabase";
@@ -242,7 +240,7 @@ export default function DashboardLayout({
     const toIndex = moduleItems.findIndex((item) => item.href === over.id);
     if (fromIndex === -1 || toIndex === -1) return;
     const next = arrayMove(moduleItems, fromIndex, toIndex);
-    const nextHrefs = next.map((item) => item.href);
+    const nextHrefs = next.map((item) => canonicalHref(item.href));
     setProfile({ ...profile, [orderColumn]: nextHrefs });
     supabase
       .from("profiles")
@@ -266,102 +264,102 @@ export default function DashboardLayout({
 
   return (
     <UnsavedChangesProvider>
-    <div className="flex flex-1 flex-col gap-4 bg-background p-4">
-      <div className="fixed top-4 right-16 z-50 flex items-center gap-2">
-        {topBarItems.map((item) => {
-          const Icon = item.icon;
-          const active = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-label={item.label}
-              title={item.label}
-              className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-colors ${
-                active
-                  ? "bg-primary text-white"
-                  : "bg-white text-foreground/70 hover:bg-black/[.05] dark:bg-zinc-900 dark:hover:bg-white/[.08]"
-              }`}
-            >
-              <Icon size={18} />
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="flex w-20 flex-shrink-0 items-center justify-center">
-        <Image
-          src="/bicolline.svg"
-          alt="Logo Bicolline"
-          width={60}
-          height={60}
-          className="h-[60px] w-[60px] dark:brightness-0 dark:invert"
-        />
-      </div>
-
-      <div className="flex flex-1 gap-6">
-        <aside className="flex w-20 flex-shrink-0 flex-col items-center gap-2 rounded-[28px] bg-white py-6 shadow-sm dark:border dark:border-white/60 dark:bg-zinc-900">
-          <div className="flex w-full flex-col items-center gap-2">
-            <SidebarItem
-              href="/tableau-de-bord"
-              label="Tableau de bord"
-              icon={LayoutDashboard}
-              active={pathname === "/tableau-de-bord"}
-            />
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onDragCancel={releaseClickSuppression}
-            >
-              <SortableContext
-                items={moduleItems.map((item) => item.href)}
-                strategy={verticalListSortingStrategy}
-              >
-                {moduleItems.map((item) => (
-                  <SortableSidebarItem
-                    key={item.href}
-                    item={item}
-                    active={pathname === item.href}
-                    suppressClickRef={suppressClickRef}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-            {disabledItems.map((item) => (
-              <DisabledSidebarItem key={item.href} item={item} />
-            ))}
-            {pinnedItems.map((item) => (
-              <SidebarItem
+      <div className="flex flex-1 flex-col gap-4 bg-background p-4">
+        <div className="fixed top-4 right-16 z-50 flex items-center gap-2">
+          {topBarItems.map((item) => {
+            const Icon = item.icon;
+            const active = pathname === item.href;
+            return (
+              <Link
                 key={item.href}
                 href={item.href}
-                label={item.label}
-                icon={item.icon}
-                active={pathname === item.href}
+                aria-label={item.label}
+                title={item.label}
+                className={`flex h-10 w-10 items-center justify-center rounded-full shadow-sm transition-colors ${
+                  active
+                    ? "bg-primary text-white"
+                    : "bg-white text-foreground/70 hover:bg-black/[.05] dark:bg-zinc-900 dark:hover:bg-white/[.08]"
+                }`}
+              >
+                <Icon size={18} />
+              </Link>
+            );
+          })}
+        </div>
+
+        <div className="flex w-20 flex-shrink-0 items-center justify-center">
+          <Image
+            src="/bicolline.svg"
+            alt="Logo Bicolline"
+            width={60}
+            height={60}
+            className="h-[60px] w-[60px] dark:brightness-0 dark:invert"
+          />
+        </div>
+
+        <div className="flex flex-1 gap-6">
+          <aside className="flex w-20 flex-shrink-0 flex-col items-center gap-2 rounded-[28px] bg-white py-6 shadow-sm dark:border dark:border-white/60 dark:bg-zinc-900">
+            <div className="flex w-full flex-col items-center gap-2">
+              <SidebarItem
+                href="/tableau-de-bord"
+                label="Tableau de bord"
+                icon={LayoutDashboard}
+                active={pathname === "/tableau-de-bord"}
               />
-            ))}
-          </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDragCancel={releaseClickSuppression}
+              >
+                <SortableContext
+                  items={moduleItems.map((item) => item.href)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {moduleItems.map((item) => (
+                    <SortableSidebarItem
+                      key={item.href}
+                      item={item}
+                      active={pathname === item.href}
+                      suppressClickRef={suppressClickRef}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+              {disabledItems.map((item) => (
+                <DisabledSidebarItem key={item.href} item={item} />
+              ))}
+              {pinnedItems.map((item) => (
+                <SidebarItem
+                  key={item.href}
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon}
+                  active={pathname === item.href}
+                />
+              ))}
+            </div>
 
-          <div className="mt-auto flex w-full flex-col items-center gap-2">
-            <SidebarItem
-              label="Se déconnecter"
-              icon={LogOut}
-              onClick={handleSignOut}
-            />
-          </div>
-        </aside>
+            <div className="mt-auto flex w-full flex-col items-center gap-2">
+              <SidebarItem
+                label="Se déconnecter"
+                icon={LogOut}
+                onClick={handleSignOut}
+              />
+            </div>
+          </aside>
 
-        <main className="flex flex-1 flex-col overflow-y-auto px-8 py-6">
-          <ViewTransition key={pathname} enter="fade-in" exit="fade-out">
-            <div className="flex-1">{children}</div>
-          </ViewTransition>
-          <footer className="mt-8 text-right text-xs text-foreground/40">
-            Outil développé par Eric D&apos;Anjou
-          </footer>
-        </main>
+          <main className="flex flex-1 flex-col overflow-y-auto px-8 py-6">
+            <ViewTransition key={pathname} enter="fade-in" exit="fade-out">
+              <div className="flex-1">{children}</div>
+            </ViewTransition>
+            <footer className="mt-8 text-right text-xs text-foreground/40">
+              Outil développé par Eric D&apos;Anjou
+            </footer>
+          </main>
+        </div>
       </div>
-    </div>
     </UnsavedChangesProvider>
   );
 }

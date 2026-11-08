@@ -5,11 +5,14 @@ import Link from "next/link";
 import { glofters } from "@/app/fonts/glofters";
 import Breadcrumb from "@/components/breadcrumb";
 import { titleSizeClass } from "@/components/module-hub";
+import { GB_YEARS, gbPath } from "@/lib/gb-years";
 
-const YEARS = [
-  { year: "2026", href: "/grande-bataille/2026", disabled: false },
-  { year: "2027", href: null, disabled: true },
-];
+const YEARS: { year: string; href: string | null; disabled: boolean }[] =
+  GB_YEARS.map((year) => ({
+    year: String(year),
+    href: gbPath(year),
+    disabled: false,
+  }));
 
 export default function GrandeBatailleHubPage() {
   return (
@@ -46,7 +49,10 @@ export default function GrandeBatailleHubPage() {
               className="group flex items-center gap-3 rounded-2xl bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border dark:border-white/60 dark:bg-zinc-900"
             >
               <span className="icon-badge-hover flex h-[55px] w-[55px] flex-shrink-0 items-center justify-center rounded-full bg-primary text-white">
-                <CalendarDays size={25} className="group-hover:animate-wiggle" />
+                <CalendarDays
+                  size={25}
+                  className="group-hover:animate-wiggle"
+                />
               </span>
               <h2
                 className={`${glofters.className} ${titleSizeClass(y.year)} leading-[0.9] text-foreground`}

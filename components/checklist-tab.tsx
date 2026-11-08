@@ -106,8 +106,14 @@ function SortableChecklistItem({
   onDelete: (item: ChecklistItem) => void;
   onOpenPrompt: (item: ChecklistItem) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: item.id, disabled: !canWrite });
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !canWrite });
 
   return (
     <div
@@ -528,11 +534,14 @@ function PromptModal({
 
 export default function ChecklistTab({
   listKey,
+  year = null,
   canWrite,
   showMeta = true,
   showPrompt = false,
 }: {
   listKey: string;
+  // Édition de la Grande Bataille ; null pour les listes hors GB.
+  year?: number | null;
   canWrite: boolean;
   showMeta?: boolean;
   showPrompt?: boolean;
@@ -551,7 +560,7 @@ export default function ChecklistTab({
     setIsLoading(true);
     setError(null);
     try {
-      setItems(await listChecklistItems(listKey));
+      setItems(await listChecklistItems(listKey, year));
     } catch {
       setError("Impossible de charger la liste.");
     } finally {
@@ -562,15 +571,15 @@ export default function ChecklistTab({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchAll sets a loading flag ahead of an async fetch
     fetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchAll is stable for a given listKey
-  }, [listKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchAll is stable for a given listKey/year
+  }, [listKey, year]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canWrite || !newLabel.trim()) return;
     setIsSubmitting(true);
     try {
-      const created = await createChecklistItem(listKey, newLabel.trim());
+      const created = await createChecklistItem(listKey, year, newLabel.trim());
       setItems((prev) => [...prev, created]);
       setNewLabel("");
     } catch {
@@ -734,7 +743,7 @@ export default function ChecklistTab({
     const remaining = items.filter((i) => !i.done);
     setItems(remaining);
     try {
-      await deleteCompletedChecklistItems(listKey);
+      await deleteCompletedChecklistItems(listKey, year);
     } catch {
       alert("Échec de la suppression.");
       fetchAll();
@@ -923,8 +932,8 @@ export default function ChecklistTab({
             onClick={handleClearCompleted}
             className="text-xs text-foreground/50 hover:underline"
           >
-            Supprimer les {doneCount} tâche{doneCount > 1 ? "s" : ""}{" "}
-            complétée{doneCount > 1 ? "s" : ""}
+            Supprimer les {doneCount} tâche{doneCount > 1 ? "s" : ""} complétée
+            {doneCount > 1 ? "s" : ""}
           </button>
         </div>
       )}

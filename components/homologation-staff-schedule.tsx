@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { listDepartments, type DepartmentDefinition } from "@/lib/department-definitions";
+import {
+  listDepartments,
+  type DepartmentDefinition,
+} from "@/lib/department-definitions";
 import {
   listAllDepartmentSlots,
   updateDepartmentSlot,
@@ -29,9 +32,9 @@ import {
 } from "@/lib/volunteer-slot-assignments";
 import { listVolunteerDepartments } from "@/lib/volunteer-departments";
 import { listVolunteers, type Volunteer } from "@/lib/volunteers";
+import { useGbYear } from "@/lib/use-gb-year";
 
 const COORDINATION_KEY = "combat";
-const YEAR = 2026;
 const DEPARTMENT_NAME = "Homologation";
 
 const STATION_SHORT_LABELS: Record<HomologationStation, string> = {
@@ -60,6 +63,7 @@ const needInputClassName =
   "w-9 rounded border border-black/[.08] bg-white px-1 py-0.5 text-[11px] text-foreground dark:border-white/[.145] dark:bg-zinc-800";
 
 export default function HomologationStaffSchedule() {
+  const gbYear = useGbYear();
   const [department, setDepartment] = useState<DepartmentDefinition | null>(
     null,
   );
@@ -82,7 +86,7 @@ export default function HomologationStaffSchedule() {
 
   const fetchAll = async () => {
     setIsLoading(true);
-    const departments = await listDepartments(COORDINATION_KEY, YEAR);
+    const departments = await listDepartments(COORDINATION_KEY, gbYear);
     const dept = departments.find((d) => d.name === DEPARTMENT_NAME) ?? null;
     setDepartment(dept);
     if (!dept) {
@@ -91,8 +95,8 @@ export default function HomologationStaffSchedule() {
     }
 
     const [allSlots, allVolunteers] = await Promise.all([
-      listAllDepartmentSlots(COORDINATION_KEY, YEAR),
-      listVolunteers(COORDINATION_KEY, YEAR),
+      listAllDepartmentSlots(COORDINATION_KEY, gbYear),
+      listVolunteers(COORDINATION_KEY, gbYear),
     ]);
     const deptSlots = allSlots.filter((s) => s.department_id === dept.id);
     const volunteerIds = allVolunteers.map((v) => v.id);
@@ -129,6 +133,7 @@ export default function HomologationStaffSchedule() {
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchAll sets a loading flag ahead of an async fetch
     fetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- gbYear is fixed for the page; the [annee] layout remounts it on a year change
   }, []);
 
   const handleNeedChange = async (
@@ -140,8 +145,15 @@ export default function HomologationStaffSchedule() {
     const neededCount = Math.max(0, Number(value) || 0);
     const previous = stationNeeds;
     const updatedNeeds = [
-      ...previous.filter((n) => !(n.slot_id === slotId && n.station === station)),
-      { id: `${slotId}:${station}`, slot_id: slotId, station, needed_count: neededCount },
+      ...previous.filter(
+        (n) => !(n.slot_id === slotId && n.station === station),
+      ),
+      {
+        id: `${slotId}:${station}`,
+        slot_id: slotId,
+        station,
+        needed_count: neededCount,
+      },
     ];
     setStationNeeds(updatedNeeds);
     try {
@@ -151,8 +163,9 @@ export default function HomologationStaffSchedule() {
         const total = HOMOLOGATION_STATIONS.reduce(
           (sum, st) =>
             sum +
-            (updatedNeeds.find((n) => n.slot_id === slotId && n.station === st.key)
-              ?.needed_count ?? 0),
+            (updatedNeeds.find(
+              (n) => n.slot_id === slotId && n.station === st.key,
+            )?.needed_count ?? 0),
           0,
         );
         await updateDepartmentSlot(slotId, {
@@ -201,7 +214,12 @@ export default function HomologationStaffSchedule() {
       ...prev.filter(
         (a) => !(a.slot_id === slotId && a.volunteer_id === volunteerId),
       ),
-      { id: `${slotId}:${volunteerId}`, slot_id: slotId, volunteer_id: volunteerId, station },
+      {
+        id: `${slotId}:${volunteerId}`,
+        slot_id: slotId,
+        volunteer_id: volunteerId,
+        station,
+      },
     ]);
     try {
       await setStaffStation(slotId, volunteerId, station);
@@ -211,7 +229,8 @@ export default function HomologationStaffSchedule() {
     }
   };
 
-  if (isLoading) return <p className="text-sm text-foreground/60">Chargement…</p>;
+  if (isLoading)
+    return <p className="text-sm text-foreground/60">Chargement…</p>;
 
   if (!department) {
     return (
@@ -224,7 +243,9 @@ export default function HomologationStaffSchedule() {
 
   const departmentVolunteers = volunteers
     .filter((v) => departmentVolunteerIds.has(v.id))
-    .sort((a, b) => marechalDisplayName(a).localeCompare(marechalDisplayName(b), "fr"));
+    .sort((a, b) =>
+      marechalDisplayName(a).localeCompare(marechalDisplayName(b), "fr"),
+    );
 
   const slotNeededTotal = (slotId: string) =>
     HOMOLOGATION_STATIONS.reduce(

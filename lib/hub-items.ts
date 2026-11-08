@@ -41,57 +41,63 @@ import {
   VenetianMask,
 } from "lucide-react";
 import type { HubItem, OrderColumn } from "@/components/module-hub";
+import {
+  canonicalHref,
+  gbYearFromPath,
+  GB_PLACEHOLDER_PREFIX,
+  withGbYear,
+} from "@/lib/gb-years";
 import BicollineIcon from "@/components/bicolline-icon";
 
 export const COMBAT_ITEMS: HubItem[] = [
   {
-    href: "/grande-bataille/2026/combat/choses-a-faire",
+    href: "/grande-bataille/[annee]/combat/choses-a-faire",
     label: "Choses à faire",
     icon: ListChecks,
     moduleKey: "grandes-batailles",
   },
   {
-    href: "/grande-bataille/2026/combat/escarmouches",
+    href: "/grande-bataille/[annee]/combat/escarmouches",
     label: "Escarmouches",
     icon: Axe,
   },
   {
-    href: "/grande-bataille/2026/combat/homologation",
+    href: "/grande-bataille/[annee]/combat/homologation",
     label: "Homologation",
     icon: ShieldCheck,
   },
   {
-    href: "/grande-bataille/2026/combat/volontaires",
+    href: "/grande-bataille/[annee]/combat/volontaires",
     label: "Volontaires",
     icon: Users,
     moduleKey: "benevoles",
   },
   {
-    href: "/grande-bataille/2026/combat/feuille-de-temps",
+    href: "/grande-bataille/[annee]/combat/feuille-de-temps",
     label: "Feuille de temps",
     icon: Clock,
     moduleKey: "feuille-de-temps",
   },
   {
-    href: "/grande-bataille/2026/combat/grandes-batailles",
+    href: "/grande-bataille/[annee]/combat/grandes-batailles",
     label: "Grandes Batailles",
     icon: Castle,
     moduleKey: "grandes-batailles",
   },
   {
-    href: "/grande-bataille/2026/combat/bilan",
+    href: "/grande-bataille/[annee]/combat/bilan",
     label: "Bilan",
     icon: NotebookPen,
     moduleKey: "bilan",
   },
   {
-    href: "/grande-bataille/2026/combat/inventaire",
+    href: "/grande-bataille/[annee]/combat/inventaire",
     label: "Inventaire matériel",
     icon: Package,
     moduleKey: "inventaire-combat",
   },
   {
-    href: "/grande-bataille/2026/combat/disponibilites",
+    href: "/grande-bataille/[annee]/combat/disponibilites",
     label: "Disponibilités",
     icon: CalendarCheck,
     moduleKey: "disponibilites",
@@ -100,43 +106,43 @@ export const COMBAT_ITEMS: HubItem[] = [
 
 export const OUTILS_ITEMS: HubItem[] = [
   {
-    href: "/grande-bataille/2026/outils/reservation-plateaux",
+    href: "/grande-bataille/[annee]/outils/reservation-plateaux",
     label: "Réservation des plateaux",
     icon: CalendarClock,
     moduleKey: "plateaux",
   },
   {
-    href: "/grande-bataille/2026/outils/volontaires",
+    href: "/grande-bataille/[annee]/outils/volontaires",
     label: "Volontaires",
     icon: Users,
     moduleKey: "volontaires-centralise",
   },
   {
-    href: "/grande-bataille/2026/outils/radios",
+    href: "/grande-bataille/[annee]/outils/radios",
     label: "Radios",
     icon: Radio,
     moduleKey: "radios",
   },
   {
-    href: "/grande-bataille/2026/outils/cles",
+    href: "/grande-bataille/[annee]/outils/cles",
     label: "Clés",
     icon: KeyRound,
     moduleKey: "cles",
   },
   {
-    href: "/grande-bataille/2026/outils/impressions",
+    href: "/grande-bataille/[annee]/outils/impressions",
     label: "Impressions",
     icon: Printer,
     moduleKey: "impressions",
   },
   {
-    href: "/grande-bataille/2026/outils/costumes",
+    href: "/grande-bataille/[annee]/outils/costumes",
     label: "Costumes et accessoires",
     icon: Shirt,
     moduleKey: "costumes",
   },
   {
-    href: "/grande-bataille/2026/outils/calendrier",
+    href: "/grande-bataille/[annee]/outils/calendrier",
     label: "Calendrier",
     icon: CalendarDays,
     moduleKey: "calendrier",
@@ -145,53 +151,63 @@ export const OUTILS_ITEMS: HubItem[] = [
 
 export const GRANDE_BATAILLE_ITEMS: HubItem[] = [
   {
-    href: "/grande-bataille/2026/combat",
+    href: "/grande-bataille/[annee]/combat",
     label: "Combat",
     icon: Swords,
     noGate: true,
     childItems: COMBAT_ITEMS,
   },
   {
-    href: "/grande-bataille/2026/outils",
+    href: "/grande-bataille/[annee]/outils",
     label: "Outils",
     icon: PencilRuler,
     noGate: true,
     childItems: OUTILS_ITEMS,
   },
   {
-    href: "/grande-bataille/2026/tournois",
+    href: "/grande-bataille/[annee]/tournois",
     label: "Tournois",
     icon: Trophy,
     moduleKey: "tournois",
   },
-  { href: "/grande-bataille/2026/generale", label: "Générale", icon: Brain, moduleKey: "generale" },
-  { href: "/grande-bataille/2026/jeu-gb", label: "Jeu", icon: ChessPawn, moduleKey: "jeu-gb" },
   {
-    href: "/grande-bataille/2026/securite",
+    href: "/grande-bataille/[annee]/generale",
+    label: "Générale",
+    icon: Brain,
+    moduleKey: "generale",
+  },
+  {
+    href: "/grande-bataille/[annee]/jeu-gb",
+    label: "Jeu",
+    icon: ChessPawn,
+    moduleKey: "jeu-gb",
+  },
+  {
+    href: "/grande-bataille/[annee]/securite",
     label: "Sécurité",
     icon: BriefcaseMedical,
     moduleKey: "securite",
   },
   {
-    href: "/grande-bataille/2026/accueil",
+    href: "/grande-bataille/[annee]/accueil",
     label: "Accueil",
     icon: Home,
     moduleKey: "accueil",
   },
   {
-    href: "/grande-bataille/2026/vie-du-duche",
+    href: "/grande-bataille/[annee]/vie-du-duche",
     label: "Vie du Duché",
     icon: Theater,
     moduleKey: "vie-du-duche",
   },
   {
-    href: "/grande-bataille/2026/operations",
+    href: "/grande-bataille/[annee]/operations",
     label: "Opérations",
     icon: ClipboardList,
     moduleKey: "operations",
   },
   {
-    href: "/grande-bataille/2026/administration",
+    href: "/grande-bataille/[annee]/administration",
     label: "Administration",
     icon: CircleDollarSign,
     moduleKey: "administration",
@@ -342,24 +358,23 @@ const BREADCRUMB_LABELS: Record<string, string> = Object.fromEntries(
     .filter((item) => !item.disabled && item.href.startsWith("/"))
     .map((item) => [item.href, item.label]),
 );
-BREADCRUMB_LABELS["/grande-bataille/2026"] = "2026";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/feuille-de-temps"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/feuille-de-temps"] =
   "Feuille de temps";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/volontaires"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/volontaires"] =
   "Volontaires";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/bilan"] = "Bilan";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/choses-a-faire"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/bilan"] = "Bilan";
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/choses-a-faire"] =
   "Choses à faire";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/gestion"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/gestion"] =
   "Gestion des tournois";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika"] = "Taktika";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/equipes"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/taktika"] = "Taktika";
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/taktika/equipes"] =
   "Équipes";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/horaires"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/taktika/horaires"] =
   "Gestion des horaires";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/reglements"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/taktika/reglements"] =
   "Gestion des règlements";
-BREADCRUMB_LABELS["/grande-bataille/2026/tournois/taktika/inventaire"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/tournois/taktika/inventaire"] =
   "Inventaire matériel";
 BREADCRUMB_LABELS["/evenements/liste"] = "Évènements";
 BREADCRUMB_LABELS["/evenements/admissions"] = "Admission";
@@ -368,24 +383,24 @@ BREADCRUMB_LABELS["/comite-combat/reglements"] = "Règles de combat";
 BREADCRUMB_LABELS["/comite-combat/standards"] = "Standards d'homologation";
 BREADCRUMB_LABELS["/comite-combat/avertissements"] = "Avertissements";
 BREADCRUMB_LABELS["/comite-combat/procedures"] = "Procédures";
-BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/horaires"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/combat/homologation/horaires"] =
   "Horaires";
-BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/inventaire"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/combat/homologation/inventaire"] =
   "Inventaire matériel";
-BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/inscriptions"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/combat/homologation/inscriptions"] =
   "Inscription mobile";
 BREADCRUMB_LABELS[
-  "/grande-bataille/2026/combat/homologation/machines-de-guerre"
+  "/grande-bataille/[annee]/combat/homologation/machines-de-guerre"
 ] = "Machines de guerre";
-BREADCRUMB_LABELS["/grande-bataille/2026/combat/homologation/bestiaire"] =
+BREADCRUMB_LABELS["/grande-bataille/[annee]/combat/homologation/bestiaire"] =
   "Bestiaire";
 for (const c of EXTRA_COORDINATIONS) {
-  BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/volontaires`] =
+  BREADCRUMB_LABELS[`/grande-bataille/[annee]/${c.key}/volontaires`] =
     "Volontaires";
-  BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/feuille-de-temps`] =
+  BREADCRUMB_LABELS[`/grande-bataille/[annee]/${c.key}/feuille-de-temps`] =
     "Feuille de temps";
-  BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/bilan`] = "Bilan";
-  BREADCRUMB_LABELS[`/grande-bataille/2026/${c.key}/choses-a-faire`] =
+  BREADCRUMB_LABELS[`/grande-bataille/[annee]/${c.key}/bilan`] = "Bilan";
+  BREADCRUMB_LABELS[`/grande-bataille/[annee]/${c.key}/choses-a-faire`] =
     "Choses à faire";
 }
 
@@ -395,10 +410,15 @@ export function breadcrumbFor(
   if (pathname === "/tableau-de-bord") return [];
   const crumbs: { href: string; label: string }[] = [];
   const segments = pathname.split("/").filter(Boolean);
+  const year = gbYearFromPath(pathname);
   let acc = "";
   for (const segment of segments) {
     acc += `/${segment}`;
-    const label = BREADCRUMB_LABELS[acc];
+    const canonical = canonicalHref(acc);
+    const label =
+      canonical === GB_PLACEHOLDER_PREFIX
+        ? String(year ?? segment)
+        : BREADCRUMB_LABELS[canonical];
     if (label) crumbs.push({ href: acc, label });
   }
   return crumbs;
@@ -408,14 +428,25 @@ export function hubContextFor(pathname: string): {
   items: HubItem[];
   orderColumn: OrderColumn;
 } {
-  if (pathname.startsWith("/grande-bataille/2026/combat")) {
-    return { items: COMBAT_ITEMS, orderColumn: "combat_order" };
-  }
-  if (pathname.startsWith("/grande-bataille/2026/outils")) {
-    return { items: OUTILS_ITEMS, orderColumn: "outils_order" };
-  }
-  if (pathname.startsWith("/grande-bataille/2026")) {
-    return { items: GRANDE_BATAILLE_ITEMS, orderColumn: "grande_bataille_order" };
+  const year = gbYearFromPath(pathname);
+  if (year !== null) {
+    const canonical = canonicalHref(pathname);
+    if (canonical.startsWith(`${GB_PLACEHOLDER_PREFIX}/combat`)) {
+      return {
+        items: withGbYear(COMBAT_ITEMS, year),
+        orderColumn: "combat_order",
+      };
+    }
+    if (canonical.startsWith(`${GB_PLACEHOLDER_PREFIX}/outils`)) {
+      return {
+        items: withGbYear(OUTILS_ITEMS, year),
+        orderColumn: "outils_order",
+      };
+    }
+    return {
+      items: withGbYear(GRANDE_BATAILLE_ITEMS, year),
+      orderColumn: "grande_bataille_order",
+    };
   }
   if (pathname.startsWith("/campagnes")) {
     return { items: CAMPAGNES_ITEMS, orderColumn: "campagnes_order" };

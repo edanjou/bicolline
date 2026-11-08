@@ -46,11 +46,13 @@ const COSTUME_SELECT =
 
 export async function listCostumes(
   coordinationKey: string,
+  year: number,
 ): Promise<CostumeItem[]> {
   const { data, error } = await supabase
     .from("costume_items")
     .select(COSTUME_SELECT)
     .eq("coordination_key", coordinationKey)
+    .eq("year", year)
     .order("description", { ascending: true });
   if (error) throw error;
   return data ?? [];
@@ -74,11 +76,12 @@ export type CostumeItemInput = {
 
 export async function createCostume(
   coordinationKey: string,
+  year: number,
   input: CostumeItemInput,
 ): Promise<CostumeItem> {
   const { data, error } = await supabase
     .from("costume_items")
-    .insert({ coordination_key: coordinationKey, ...input })
+    .insert({ coordination_key: coordinationKey, year, ...input })
     .select(COSTUME_SELECT)
     .single();
   if (error) throw error;
@@ -97,9 +100,6 @@ export async function updateCostume(
 }
 
 export async function deleteCostume(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("costume_items")
-    .delete()
-    .eq("id", id);
+  const { error } = await supabase.from("costume_items").delete().eq("id", id);
   if (error) throw error;
 }

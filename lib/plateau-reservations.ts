@@ -22,11 +22,13 @@ const RESERVATION_SELECT =
 
 export async function listReservations(
   coordinationKey: string,
+  year: number,
 ): Promise<PlateauReservation[]> {
   const { data, error } = await supabase
     .from("plateau_reservations")
     .select(RESERVATION_SELECT)
     .eq("coordination_key", coordinationKey)
+    .eq("year", year)
     .order("date", { ascending: true })
     .order("start_time", { ascending: true });
   if (error) throw error;
@@ -49,11 +51,12 @@ export type ReservationInput = {
 
 export async function createReservation(
   coordinationKey: string,
+  year: number,
   input: ReservationInput,
 ): Promise<PlateauReservation> {
   const { data, error } = await supabase
     .from("plateau_reservations")
-    .insert({ coordination_key: coordinationKey, ...input })
+    .insert({ coordination_key: coordinationKey, year, ...input })
     .select(RESERVATION_SELECT)
     .single();
   if (error) throw error;
@@ -90,7 +93,10 @@ export async function deleteReservation(id: string): Promise<void> {
   if (error) throw error;
 }
 
-function effectiveWindow(r: PlateauReservation): { start: string; end: string } {
+function effectiveWindow(r: PlateauReservation): {
+  start: string;
+  end: string;
+} {
   return {
     start: r.setup_start ?? r.start_time,
     end: r.teardown_end ?? r.end_time,
