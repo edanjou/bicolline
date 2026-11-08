@@ -718,7 +718,13 @@ function MapWatermark({
 }
 
 const COMPASS_SRC = "/rose-des-vents.svg";
-const COMPASS_SIZE = 96;
+// Dimensions du SVG (lettres cardinales comprises) et centre de la rose,
+// autour duquel elle pivote.
+const COMPASS_NATURAL_WIDTH = 492;
+const COMPASS_NATURAL_HEIGHT = 502;
+const COMPASS_CENTER_X = 249.5;
+const COMPASS_CENTER_Y = 250;
+const COMPASS_HEIGHT = 110;
 
 // Rose des vents en coin de carte. La carte de fond est orientée nord en haut :
 // la rose pivote avec le fond pour pointer toujours vers le nord.
@@ -730,16 +736,20 @@ function MapCompassRose({
   rotation: number;
 }) {
   const [image] = useImage(COMPASS_SRC, "anonymous");
+  const scale = COMPASS_HEIGHT / COMPASS_NATURAL_HEIGHT;
+  const width = COMPASS_NATURAL_WIDTH * scale;
+  const offsetX = COMPASS_CENTER_X * scale;
+  const offsetY = COMPASS_CENTER_Y * scale;
 
   return (
     <KonvaImage
       image={image}
-      x={displayWidth - WATERMARK_MARGIN - COMPASS_SIZE / 2}
-      y={WATERMARK_MARGIN + COMPASS_SIZE / 2}
-      width={COMPASS_SIZE}
-      height={COMPASS_SIZE}
-      offsetX={COMPASS_SIZE / 2}
-      offsetY={COMPASS_SIZE / 2}
+      x={displayWidth - WATERMARK_MARGIN - width + offsetX}
+      y={WATERMARK_MARGIN + offsetY}
+      width={width}
+      height={COMPASS_HEIGHT}
+      offsetX={offsetX}
+      offsetY={offsetY}
       rotation={rotation}
       listening={false}
     />
